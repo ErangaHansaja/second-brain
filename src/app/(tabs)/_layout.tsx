@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme/tokens';
 
 export default function TabLayout() {
@@ -17,21 +18,39 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Explorer',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>🪐</Text>,
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? 'planet' : 'planet-outline'}
+              size={size ?? 22}
+              color={color as string}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: 'Search',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>🔍</Text>,
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? 'search' : 'search-outline'}
+              size={size ?? 22}
+              color={color as string}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>⚙️</Text>,
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? 'settings' : 'settings-outline'}
+              size={size ?? 22}
+              color={color as string}
+            />
+          ),
         }}
       />
     </Tabs>
@@ -51,8 +70,6 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.bg.void,
     borderTopColor: Colors.border.subtle,
-  },
-  tabIcon: {
-    fontSize: 18,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

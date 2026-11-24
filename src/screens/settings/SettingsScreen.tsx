@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@/theme/tokens';
 import { runRepositorySelfTest, type SelfTestOutput } from '@/db/selfTest';
@@ -40,8 +41,8 @@ export default function SettingsScreen() {
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.card}>
         <View style={styles.headerRow}>
-          <Text style={styles.badge}>SYSTEM // CONFIG</Text>
-          <Text style={styles.status}>READY</Text>
+          <Text style={styles.badge}>SETTINGS</Text>
+          <Text style={styles.status}>LOCAL</Text>
         </View>
         <Text style={styles.title}>Settings & Data</Text>
         <Text style={styles.subtitle}>
@@ -53,7 +54,7 @@ export default function SettingsScreen() {
         <View style={[styles.card, styles.devCard]}>
           <View style={styles.devHeader}>
             <Ionicons name="construct-outline" size={16} color={Colors.tier.core} />
-            <Text style={styles.devTitle}>ENGINE DIAGNOSTICS</Text>
+            <Text style={styles.devTitle}>DEVELOPER TOOLS</Text>
           </View>
 
           <Pressable
@@ -72,6 +73,17 @@ export default function SettingsScreen() {
             <Text style={styles.testButtonText}>
               {testing ? 'Running DB Verification...' : 'Run DB Self-Test'}
             </Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.testButton,
+              styles.galleryButton,
+              pressed && styles.testButtonPressed,
+            ]}
+            onPress={() => router.push('/dev-gallery' as any)}>
+            <Ionicons name="images-outline" size={16} color={Colors.tier.core} />
+            <Text style={styles.testButtonText}>Open UI Component Gallery</Text>
           </Pressable>
 
           {testOutput && (
@@ -197,6 +209,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingVertical: Spacing.sm + 2,
     paddingHorizontal: Spacing.md,
+  },
+  galleryButton: {
+    marginTop: Spacing.sm,
+    borderColor: Colors.border.subtle,
   },
   testButtonPressed: {
     opacity: 0.8,
