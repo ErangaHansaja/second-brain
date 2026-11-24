@@ -1,5 +1,7 @@
+import { useLocalSearchParams } from 'expo-router';
 import ExplorerScreen from '@/screens/explorer/ExplorerScreen';
 
 export default function ExplorerRoute() {
-  return <ExplorerScreen />;
+  const { nodeId } = useLocalSearchParams<{ nodeId?: string }>();
+  return <ExplorerScreen initialNodeId={nodeId} />;
 }
