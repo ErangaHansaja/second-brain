@@ -1,11 +1,11 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { AnySQLiteColumn, sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const nodes = sqliteTable('nodes', {
   // ── Identity ──────────────────────────────────────────────────
   id: text('id').primaryKey(),
   parentId: text('parent_id').references(
-    () => nodes.id,
+    (): AnySQLiteColumn => nodes.id,
     { onDelete: 'cascade' }
   ),
 
