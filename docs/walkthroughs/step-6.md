@@ -2,7 +2,7 @@
 
 > **Branch:** `feat/step-6-ui-components`  
 > **Base:** `dev` (at `4850df1` — Step 5 merged)  
-> **Status:** Completed & Verified  
+> **Status:** Completed & Verified (PR #5 Review Fixes Applied)  
 
 ---
 
@@ -11,16 +11,18 @@
 Step 6 delivers the complete visual component design system for Second Brain. It strictly enforces the obsidian deep-space instrument aesthetic, eliminates all emoji navigation chrome, banishes generic AI telemetry filler, and provides an on-device interactive Component Gallery for visual QA:
 
 1. **Vector Tab Bar Upgrade:** Replaced raw emoji icons in `src/app/(tabs)/_layout.tsx` with `@expo/vector-icons` (`Ionicons` `planet`, `search`, and `settings`) matching the obsidian token theme.
-2. **Common Atoms (`src/components/common/`):** Built `TextInputField` (with warm event-horizon amber active border and inline error reporting), `ConfirmDialog` (modal overlay with standard and destructive styling), and `EmptyState` (hairline circular icon ring with centered copy and primary action button).
-3. **Explorer Components (`src/components/explorer/`):** Built `TierBadge` (color-coded 6px dot with monospace tier name), `Breadcrumb` (horizontal auto-scrolling ancestor path with `/` separators), `NodeCard` (supporting list & grid modes, tier accent indicator, Ionicon fallbacks, descendant item count, and entry rating pill), `AddNodeFAB` (floating action button opening Folder/Entry creation modal with quick icon picker), and `MoveNodeModal` (destination folder picker with tier dots, monospace paths, and current-parent indicator).
-4. **Detail & Search Components (`src/components/detail/` & `src/components/search/`):** Built `StatusChip` (semantic status pill with preset selection modal), `RatingStars` (tactile 1–10 dot row with monospace score), `TagsRow` (monospace chips with edit/remove and inline add-tag input), `MetadataEditor` (key-value table with delete and add-field support), and `SearchResultCard` (breadcrumb path, tier dot, status chip, and tag preview).
-5. **Interactive `__DEV__` Component Gallery:** Created `src/screens/dev/ComponentGalleryScreen.tsx` and thin route `src/app/dev-gallery.tsx`, accessible directly from the Settings screen via an `"Open UI Component Gallery"` button.
+2. **Safe Area & Keyboard Wrapper (`ScreenContainer`):** Built `src/components/layout/ScreenContainer.tsx` wrapping screens with `SafeAreaView` (`react-native-safe-area-context`) and optional `KeyboardAvoidingView` to prevent status bar collisions on Android and iOS.
+3. **Common Atoms (`src/components/common/`):** Built `TextInputField` (with warm event-horizon amber active border and inline error reporting), `ConfirmDialog` (modal overlay with standard and destructive styling), and `EmptyState` (hairline circular icon ring with centered copy and primary action button).
+4. **Explorer Components (`src/components/explorer/`):** Built `TierBadge` (color-coded 6px dot with monospace tier name), `Breadcrumb` (horizontal auto-scrolling ancestor path with `/` separators), `NodeCard` (supporting list & grid modes, tier accent indicator, Ionicon fallbacks, descendant item count, and entry rating pill), `AddNodeFAB` (floating action button opening Folder/Entry creation modal with quick icon picker), and `MoveNodeModal` (destination folder picker with tier dots, monospace paths, and current-parent indicator).
+5. **Detail & Search Components (`src/components/detail/` & `src/components/search/`):** Built `StatusChip` (semantic status pill with preset selection modal), `RatingStars` (tactile 1–10 dot row with monospace score), `TagsRow` (monospace chips with keyboard-safe modal input), `MetadataEditor` (key-value table with keyboard-safe modal add/edit), and `SearchResultCard` (breadcrumb path, tier dot, status chip, and tag preview).
+6. **Interactive `__DEV__` Component Gallery:** Created `src/screens/dev/ComponentGalleryScreen.tsx` and thin route `src/app/dev-gallery.tsx`, accessible directly from the Settings screen via an `"Open UI Component Gallery"` button, featuring a top back navigation bar and subtle dark inline feedback banners.
 
 ---
 
 ## 2. File Changes
 
 ### Files Created
+- `src/components/layout/ScreenContainer.tsx` — SafeAreaView + KeyboardAvoidingView layout wrapper.
 - `src/components/common/TextInputField.tsx` — Obsidian text input with active focus and error state.
 - `src/components/common/ConfirmDialog.tsx` — Modal dialog with normal/destructive confirm buttons.
 - `src/components/common/EmptyState.tsx` — Hairline circular ring icon, copy, and action button.
@@ -31,8 +33,8 @@ Step 6 delivers the complete visual component design system for Second Brain. It
 - `src/components/explorer/MoveNodeModal.tsx` — Destination folder picker modal.
 - `src/components/detail/StatusChip.tsx` — Status chip with preset picker modal.
 - `src/components/detail/RatingStars.tsx` — Tactile 1–10 score dots with monospace text.
-- `src/components/detail/TagsRow.tsx` — Monospace #tag chips with interactive add/remove.
-- `src/components/detail/MetadataEditor.tsx` — Key-value metadata table with add/remove support.
+- `src/components/detail/TagsRow.tsx` — Monospace #tag chips with keyboard-safe dark modal input.
+- `src/components/detail/MetadataEditor.tsx` — Key-value metadata table with keyboard-safe dark modal add/edit.
 - `src/components/search/SearchResultCard.tsx` — Search hit card with full breadcrumb path.
 - `src/screens/dev/ComponentGalleryScreen.tsx` — Full interactive QA testbed for all Step 6 components.
 - `src/app/dev-gallery.tsx` — Thin route wrapper (5 lines) for the Component Gallery.
@@ -40,7 +42,7 @@ Step 6 delivers the complete visual component design system for Second Brain. It
 
 ### Files Modified
 - `src/app/(tabs)/_layout.tsx` — Upgraded bottom tab icons to `Ionicons` (`planet`, `search`, `settings`).
-- `src/screens/settings/SettingsScreen.tsx` — Replaced fake telemetry labels with calm human copy, and added `"Open UI Component Gallery"` button.
+- `src/screens/settings/SettingsScreen.tsx` — Replaced fake telemetry labels with calm human copy, verified pure vector glyphs, and added `"Open UI Component Gallery"` button.
 - `PROJECT_STATE.md` — Updated roadmap progress, file tree, and architectural decisions.
 
 ---
@@ -49,6 +51,7 @@ Step 6 delivers the complete visual component design system for Second Brain. It
 
 | Component | Path | Key Capabilities |
 |:---|:---|:---|
+| **ScreenContainer** | `src/components/layout/ScreenContainer.tsx` | `SafeAreaView` edge handling, optional `KeyboardAvoidingView`, void black background |
 | **TextInputField** | `src/components/common/TextInputField.tsx` | Obsidian surface, amber glow on focus (`Colors.border.active`), inline error display |
 | **ConfirmDialog** | `src/components/common/ConfirmDialog.tsx` | Transparent overlay, elevated surface card, normal or destructive button styling |
 | **EmptyState** | `src/components/common/EmptyState.tsx` | 64px hairline circular icon ring, centered typography, optional CTA button |
@@ -59,8 +62,8 @@ Step 6 delivers the complete visual component design system for Second Brain. It
 | **MoveNodeModal** | `src/components/explorer/MoveNodeModal.tsx` | Destination folder picker with tier dots, monospace paths, and disabled current folder |
 | **StatusChip** | `src/components/detail/StatusChip.tsx` | Maps preset colors & icons, tap opens modal selector with all 6 status presets |
 | **RatingStars** | `src/components/detail/RatingStars.tsx` | Tactile row of 10 score dots (amber active), monospace `8 / 10` readout |
-| **TagsRow** | `src/components/detail/TagsRow.tsx` | Monospace `#tag` chips, inline `#` tag input, delete tag buttons in edit mode |
-| **MetadataEditor** | `src/components/detail/MetadataEditor.tsx` | Key-value table with monospace keys, inline field addition, and delete button |
+| **TagsRow** | `src/components/detail/TagsRow.tsx` | Monospace `#tag` chips, keyboard-safe dark modal input, duplicate & empty validation |
+| **MetadataEditor** | `src/components/detail/MetadataEditor.tsx` | Key-value table with monospace keys, keyboard-safe modal add/edit, and delete button |
 | **SearchResultCard** | `src/components/search/SearchResultCard.tsx` | Monospace path breadcrumb, node icon, tier dot, status pill, tag preview |
 
 ---
@@ -74,7 +77,10 @@ Step 6 delivers the complete visual component design system for Second Brain. It
 | `2f36222` | `feat(components): add explorer components (TierBadge, Breadcrumb, NodeCard, AddNodeFAB, MoveNodeModal)` | Explorer hierarchy components |
 | `aacfa81` | `feat(components): add detail and search components (StatusChip, RatingStars, TagsRow, MetadataEditor, SearchResultCard)` | Detail and search components |
 | `faaf8e7` | `feat(dev): add __DEV__ interactive Component Gallery screen for visual QA` | Component gallery screen, thin route, Settings button |
-| *(pending)* | `docs: update PROJECT_STATE.md and add step-6 walkthrough` | State tracking and walkthrough report |
+| `a05daea` | `docs: update PROJECT_STATE.md and add step-6 walkthrough` | State tracking and walkthrough report |
+| `a6791ca` | `fix(layout): add SafeArea ScreenContainer and fix status bar collision in ComponentGallery` | Safe area wrapper & gallery header bar |
+| `d7a14bb` | `fix(components): move tag and metadata entry to keyboard-safe dark modals` | Keyboard-safe modals for tags and metadata |
+| *(pending)* | `fix(ui): remove leftover emoji in settings dev header and update step-6 docs` | Settings check and docs update |
 
 ---
 
@@ -86,21 +92,16 @@ Step 6 delivers the complete visual component design system for Second Brain. It
    ```
    *Result:* Passed with **0 errors**.
 
-2. **On-Device Expo Go Verification:**
+2. **On-Device Android Expo Go Verification:**
    ```bash
    npx expo start
    ```
    - Open app on physical phone via Expo Go.
-   - Verify bottom tab icons render crisp vector icons (`planet`, `search`, `settings`) with amber active tint.
-   - Switch to **Settings** tab.
-   - Under **DEVELOPER TOOLS**, tap **"Open UI Component Gallery"**.
-   - Test interactive elements:
-     - Verify all 5 Cosmic Tier badges render correct colors and monospace names.
-     - Tap breadcrumb ancestor to trigger alert.
-     - Review list and grid mode Node Cards.
-     - Tap **Status Chip** to open status selector modal and choose different statuses.
-     - Tap score dots 1–10 on **Rating Stars** to verify tactile score update.
-     - Tap **"Add tag"** in **Tags Row**, type a tag name, and remove existing tags.
-     - Tap **"Add Metadata Field"** in **Metadata Editor**, enter key & value, and save.
-     - Tap **"Test Confirm Dialog"** and **"Test Delete Dialog"** to inspect overlays.
-     - Tap **"Test Move Modal"** to verify destination folder picker.
+   - Switch to **Settings** tab and tap **"Open UI Component Gallery"**.
+   - **Status Bar & Header Check:** Verify the screen sits comfortably below the Android status bar clock and icons, with a top header containing a back arrow button (`arrow-back`) and title `"Component Gallery"`. Tap the back arrow to verify smooth navigation.
+   - **Keyboard & Modal Check:**
+     - Tap **"+ Add tag"**: verify a centered, dark elevated modal opens with `TextInputField` focused. Type a tag and tap `Add`.
+     - Tap **"+ Add Metadata Field"**: verify a centered dark modal opens with `Field Name` and `Value` fields. Enter details and save.
+     - Tap an existing metadata row in edit mode to edit its values inside the modal.
+   - **Dark Feedback Banner Check:**
+     - Tap cards, breadcrumbs, search results, or dialog buttons. Notice the dark amber feedback banner at the top of the gallery reporting the action without any blinding white native system dialogs.

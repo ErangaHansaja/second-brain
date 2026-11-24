@@ -84,16 +84,18 @@ second-brain/
     │   │   ├── EmptyState.tsx             # Hairline circular ring icon, copy & CTA button
     │   │   └── TextInputField.tsx         # Obsidian input with amber active border & inline errors
     │   ├── detail/                        # Entry detail & inspector primitives
-    │   │   ├── MetadataEditor.tsx         # Key-value rows with add/edit/delete support
+    │   │   ├── MetadataEditor.tsx         # Key-value rows with keyboard-safe modal add/edit
     │   │   ├── RatingStars.tsx            # Tactile 1–10 dot row with monospace rating display
     │   │   ├── StatusChip.tsx             # Semantic status chip with preset selection modal
-    │   │   └── TagsRow.tsx                # Monospace #tag chips with add/remove actions
+    │   │   └── TagsRow.tsx                # Monospace #tag chips with keyboard-safe modal input
     │   ├── explorer/                      # Core hierarchy & navigation atoms
     │   │   ├── AddNodeFAB.tsx             # Floating '+' button with Folder/Entry creation modal
     │   │   ├── Breadcrumb.tsx             # Monospace ancestor breadcrumb with auto-scroll
     │   │   ├── MoveNodeModal.tsx          # Scrollable folder picker with depth dots & paths
     │   │   ├── NodeCard.tsx               # Obsidian list & grid card with tier accents & metadata
     │   │   └── TierBadge.tsx              # Cosmic tier indicator dot and monospace name
+    │   ├── layout/                        # Screen layout primitives
+    │   │   └── ScreenContainer.tsx        # SafeAreaView + KeyboardAvoidingView wrapper
     │   ├── providers/
     │   │   └── DatabaseProvider.tsx       # useMigrations hook with loading & error screens
     │   └── search/                        # Search atoms
@@ -169,13 +171,17 @@ second-brain/
    - Bottom tab bar upgraded to `@expo/vector-icons` (`Ionicons` `planet`, `search`, `settings`).
    - All component chrome (chevrons, delete icons, modal close, status presets, FAB) uses standard vector glyphs.
    - Banned fake telemetry labels (`ONLINE`, `STANDBY`, `SYSTEM // CONFIG`, etc.) in favor of calm, human copy.
-5. **Obsidian UI Component Library (Step 6 Delivered):**
+5. **Obsidian UI Component Library & Layout (Step 6 Delivered):**
+   - **Layout:** `ScreenContainer` provides `SafeAreaView` status bar isolation and `KeyboardAvoidingView` cross-platform support.
    - **Common:** `TextInputField` (amber focus glow, inline errors), `ConfirmDialog` (modal overlay with destructive styling), `EmptyState` (hairline icon ring with CTA).
    - **Explorer:** `TierBadge` (color dot + monospace tier name), `Breadcrumb` (horizontal auto-scrolling with slash separators), `NodeCard` (list/grid modes, tier accent bar, item count, chevron, rating badge), `AddNodeFAB` (floating circular button + folder/entry creation modal with icon picker), `MoveNodeModal` (destination picker with full paths and current parent indicator).
-   - **Detail:** `StatusChip` (preset status colors and selection modal), `RatingStars` (tactile 1–10 dot row with monospace score), `TagsRow` (monospace chips with remove and add actions), `MetadataEditor` (key-value table with add and delete support).
+   - **Detail:** `StatusChip` (preset status colors and selection modal), `RatingStars` (tactile 1–10 dot row with monospace score), `TagsRow` (monospace chips with keyboard-safe modal input), `MetadataEditor` (key-value table with keyboard-safe modal add/edit).
    - **Search:** `SearchResultCard` (path breadcrumb, node icon, tier dot, status chip, tags snippet).
 6. **Visual QA Dev Gallery (`ComponentGalleryScreen.tsx`):**
    - Route `/dev-gallery` accessible from Settings under `__DEV__`.
+   - Top header bar with back navigation (`router.back()`) safely below Android/iOS status bars via `ScreenContainer`.
+   - Subtle dark inline action feedback banner replacing blinding white native system dialogs.
+   - Interactive testing harness verifying all components in real time on iOS and Android.
    - Interactive testing harness verifying all 12 components in real time on iOS and Android.
 
 ---
