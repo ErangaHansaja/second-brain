@@ -1,16 +1,17 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
+import { Colors } from '@/theme/tokens';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerStyle: styles.header,
-        headerTintColor: '#E8EAFF',
+        headerTintColor: Colors.text.primary,
         headerTitleStyle: styles.headerTitle,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#7B61FF',
-        tabBarInactiveTintColor: '#8B8FA8',
+        tabBarActiveTintColor: Colors.tier.core,
+        tabBarInactiveTintColor: Colors.text.muted,
       }}>
       <Tabs.Screen
         name="index"
@@ -39,17 +40,17 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#05060F',
-    borderBottomColor: '#1E2035',
+    backgroundColor: Colors.bg.void,
+    borderBottomColor: Colors.border.subtle,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: {
-    color: '#E8EAFF',
-    fontWeight: 'bold',
+    color: Colors.text.primary,
+    fontWeight: '700',
   },
   tabBar: {
-    backgroundColor: '#05060F',
-    borderTopColor: '#1E2035',
+    backgroundColor: Colors.bg.void,
+    borderTopColor: Colors.border.subtle,
   },
   tabIcon: {
     fontSize: 18,
