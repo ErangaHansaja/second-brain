@@ -173,6 +173,16 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
     }
   }, []);
 
+  const handleNodeCreated = useCallback(
+    (newNode: ParsedNode) => {
+      handleRefresh();
+      if (newNode.nodeType === 'entry') {
+        router.push(`/node/${newNode.id}?edit=1` as any);
+      }
+    },
+    [handleRefresh]
+  );
+
   const handleNodeLongPress = useCallback((node: ParsedNode) => {
     setSelectedNode(node);
     setActiveModal('actions');
@@ -454,7 +464,7 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
         <AddNodeFAB
           parentId={currentNode.id}
           parentDepth={currentNode.depth}
-          onCreated={handleRefresh}
+          onCreated={handleNodeCreated}
         />
       ) : null}
 
