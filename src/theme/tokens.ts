@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
+import type { CosmicTier } from '../types';
 
-export type CosmicTier = 'Core' | 'Galaxy' | 'Solar System' | 'Planet' | 'Moon';
+export type { CosmicTier };
 
 export const Colors = {
   // Deep-space background layers
