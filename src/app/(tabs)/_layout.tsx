@@ -18,6 +18,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Explorer',
+          headerShown: false,
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? 'planet' : 'planet-outline'}

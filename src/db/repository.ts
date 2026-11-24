@@ -341,6 +341,22 @@ export async function getDescendantCount(nodeId: string): Promise<number> {
 }
 
 /**
+ * Internal helper: returns all recursive descendant IDs of `nodeId` (excluding `nodeId` itself).
+ */
+function getDescendantIds(nodeId: string): string[] {
+  const subtreeQuery = `
+    WITH RECURSIVE subtree AS (
+      SELECT id FROM nodes WHERE parent_id = ?
+      UNION ALL
+      SELECT n.id FROM nodes n INNER JOIN subtree s ON n.parent_id = s.id
+    )
+    SELECT id FROM subtree;
+  `;
+  const rows = expoDb.getAllSync<{ id: string }>(subtreeQuery, [nodeId]);
+  return rows.map(r => r.id);
+}
+
+/**
  * Moves a node to a new parent folder.
  * Validates circular references (target cannot be self or descendant).
  * Updates node's parent and cascades depth changes to all descendants inside a transaction.
@@ -369,16 +385,8 @@ export async function moveNode(
   }
 
   // Fetch all descendant IDs using recursive CTE to prevent circular move
-  const subtreeQuery = `
-    WITH RECURSIVE subtree AS (
-      SELECT id FROM nodes WHERE parent_id = ?
-      UNION ALL
-      SELECT n.id FROM nodes n INNER JOIN subtree s ON n.parent_id = s.id
-    )
-    SELECT id FROM subtree;
-  `;
-  const descendantRows = expoDb.getAllSync<{ id: string }>(subtreeQuery, [nodeId]);
-  const descendantIds = new Set(descendantRows.map(r => r.id));
+  const descendantIdList = getDescendantIds(nodeId);
+  const descendantIds = new Set(descendantIdList);
 
   if (descendantIds.has(newParentId)) {
     throw new Error('Circular move: target is a descendant');
@@ -395,11 +403,11 @@ export async function moveNode(
       [newParentId, newDepth, now, nodeId]
     );
 
-    if (descendantRows.length > 0) {
-      const placeholders = descendantRows.map(() => '?').join(',');
+    if (descendantIdList.length > 0) {
+      const placeholders = descendantIdList.map(() => '?').join(',');
       expoDb.runSync(
         `UPDATE nodes SET depth = depth + ?, updated_at = ? WHERE id IN (${placeholders});`,
-        [depthDelta, now, ...descendantRows.map(r => r.id)]
+        [depthDelta, now, ...descendantIdList]
       );
     }
   });
@@ -409,6 +417,59 @@ export async function moveNode(
     throw new Error(`Failed to retrieve moved node: ${nodeId}`);
   }
   return updated;
+}
+
+/**
+ * Fetches all folder nodes eligible as move destinations for `nodeId`.
+ * Excludes `nodeId` itself and all recursive descendants to prevent circular moves.
+ */
+export async function getMoveTargets(
+  nodeId: string
+): Promise<{ id: string; title: string; depth: number; pathLabel: string }[]> {
+  interface FolderRow {
+    id: string;
+    parentId: string | null;
+    title: string;
+    depth: number;
+  }
+
+  const allFolders = expoDb.getAllSync<FolderRow>(
+    `SELECT id, parent_id AS parentId, title, depth
+     FROM nodes
+     WHERE node_type = 'folder'
+     ORDER BY depth ASC, title COLLATE NOCASE ASC;`
+  );
+
+  const folderMap = new Map<string, FolderRow>();
+  for (const folder of allFolders) {
+    folderMap.set(folder.id, folder);
+  }
+
+  const excludedIds = new Set<string>([nodeId, ...getDescendantIds(nodeId)]);
+
+  const buildPathLabel = (folder: FolderRow): string => {
+    if (folder.depth === 0 || !folder.parentId) {
+      return 'Root';
+    }
+    const parts: string[] = [];
+    const seen = new Set<string>();
+    let curr: FolderRow | undefined = folder;
+    while (curr && !seen.has(curr.id)) {
+      seen.add(curr.id);
+      parts.unshift(curr.title);
+      curr = curr.parentId ? folderMap.get(curr.parentId) : undefined;
+    }
+    return parts.join(' / ');
+  };
+
+  return allFolders
+    .filter(folder => !excludedIds.has(folder.id))
+    .map(folder => ({
+      id: folder.id,
+      title: folder.title,
+      depth: folder.depth,
+      pathLabel: buildPathLabel(folder),
+    }));
 }
 
 /**
