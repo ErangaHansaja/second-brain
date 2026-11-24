@@ -56,3 +56,19 @@ These rules apply to Step 2 and EVERY future development step in this repository
 - Always commit step-by-step (1 logical unit = 1 small, cleanly described atomic commit).
 - Never merge a feature branch into `dev` without explicit user testing and approval.
 - Never start the next roadmap step until the current step is approved and merged.
+
+---
+
+## 6. Manual PR Merge Only
+- **Never merge feature branches into `dev` locally.**
+- At the end of EVERY step, push the branch to `origin` and execute the workflow defined in `.github/commands/create_feature_pr.md` to open or update a Pull Request targeting `dev`.
+- Print the clickable PR URL and perform a **HARD STOP** so the user can review diffs, test, and merge manually on GitHub.
+- Never advance to the next step until the user merges the PR and gives explicit approval.
+
+---
+
+## 7. Clean Copy & Real Vector Icons (Zero AI Slop)
+- **Zero cheesy sci-fi filler text:** Never write boilerplate pseudo-cyber copy like `ONLINE`, `STANDBY`, `SYSTEM // CONFIG`, `QUERY // INDEX`, or fake status indicators. Use clear, human, purpose-driven labels (`Knowledge Base`, `Recent Entries`, `Search Nodes`, `Settings`).
+- **Zero raw system emoji chrome:** Never use raw emojis (`🪐`, `🔍`, `⚙️`, etc.) as tab bar icons, button icons, or navigation chrome. Always use proper vector icons from `@expo/vector-icons` (`Ionicons` or `Feather`).
+- **User content exception:** Emojis are reserved strictly for user-selected folder/entry icons or preset visual category tags (stored as data, not hardcoded into UI navigation).
+

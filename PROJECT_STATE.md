@@ -30,8 +30,11 @@
 
 ```
 second-brain/
+├── .github/
+│   └── commands/
+│       └── create_feature_pr.md           # Standardized PR workflow template for all roadmap steps
 ├── .gitignore
-├── AGENT_RULES.md                         # 5 permanent rules (thin routes, anti-generic design, state file, etc.)
+├── AGENT_RULES.md                         # 7 permanent rules (thin routes, obsidian theme, manual PRs, zero slop)
 ├── IMPLEMENTATION_PLAN.md                 # Master blueprint with 8 architectural corrections
 ├── LICENSE
 ├── PROJECT_STATE.md                       # This living state document
@@ -113,6 +116,8 @@ second-brain/
    - Recursive CTE queries must use `db.all()` / `expoDb.getAllSync()` with snake_case aliases (`parent_id AS parentId`).
    - Database restore must sort nodes by `depth ASC` before inserting.
 4. **Navigation:** Single-screen Explorer with `currentNodeId` in React state and hardware Android `BackHandler` interception.
+5. **PR-Only Merge Policy (Rule 6):** Feature branches are NEVER merged locally to `dev`. Every completed step pushes to `origin` and opens a PR using `.github/commands/create_feature_pr.md` for manual review and merge on GitHub.
+6. **Zero AI Slop & Vector Icons (Rule 7):** Banned filler status copy (`ONLINE`, `STANDBY`, `SYSTEM // CONFIG`, etc.) and banned raw system emojis for navigation chrome. All navigation icons must use `@expo/vector-icons` (`Ionicons` / `Feather`), reserving emojis strictly for user-created content.
 
 ---
 
