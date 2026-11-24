@@ -3,9 +3,12 @@ import { eq, isNull, desc, sql } from 'drizzle-orm';
 import { db, expoDb } from './client';
 import { nodes, type Node, type NewNode } from './schema';
 import { Colors } from '../theme/tokens';
+import { STARTER_TEMPLATES } from '../constants/starterTemplates';
 import type {
   BreadcrumbItem,
   CreateNodeInput,
+  DatabaseStats,
+  ExportedDatabase,
   ParsedNode,
   SearchResult,
   UpdateNodePatch,
@@ -456,4 +459,192 @@ export async function searchNodes(query: string): Promise<SearchResult[]> {
   }
 
   return results;
+}
+
+// ── Starter Seeding, Stats & Backup Export/Import ──────────────────
+/**
+ * Idempotently seeds starter category galaxies and solar systems under the root node.
+ * If depth === 1 nodes already exist, returns immediately without modifying data.
+ */
+export async function seedStarterTemplates(rootId: string): Promise<void> {
+  const root = await getNode(rootId);
+  if (!root || root.depth !== 0) {
+    throw new Error('A valid root node (depth === 0) must be provided for seeding');
+  }
+
+  const existingGalaxies = expoDb.getAllSync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM nodes WHERE depth = 1;'
+  );
+  if ((existingGalaxies[0]?.count ?? 0) > 0) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  expoDb.withTransactionSync(() => {
+    for (const galaxy of STARTER_TEMPLATES) {
+      const galaxyId = Crypto.randomUUID();
+      expoDb.runSync(
+        `INSERT INTO nodes (
+          id, parent_id, title, node_type, depth, icon, color, description, tags, metadata, created_at, updated_at
+        ) VALUES (?, ?, ?, 'folder', 1, ?, ?, ?, '[]', '{}', ?, ?);`,
+        [
+          galaxyId,
+          rootId,
+          galaxy.title,
+          galaxy.icon,
+          galaxy.color,
+          galaxy.description ?? null,
+          now,
+          now,
+        ]
+      );
+
+      if (galaxy.children && galaxy.children.length > 0) {
+        for (const child of galaxy.children) {
+          const childId = Crypto.randomUUID();
+          expoDb.runSync(
+            `INSERT INTO nodes (
+              id, parent_id, title, node_type, depth, icon, color, description, tags, metadata, created_at, updated_at
+            ) VALUES (?, ?, ?, 'folder', 2, ?, ?, ?, '[]', '{}', ?, ?);`,
+            [
+              childId,
+              galaxyId,
+              child.title,
+              child.icon,
+              child.color,
+              child.description ?? null,
+              now,
+              now,
+            ]
+          );
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Computes live database statistics across cosmic tiers and node types.
+ */
+export async function getDatabaseStats(): Promise<DatabaseStats> {
+  const statsQuery = `
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN depth = 1 THEN 1 ELSE 0 END) AS galaxies,
+      SUM(CASE WHEN depth = 2 THEN 1 ELSE 0 END) AS solarSystems,
+      SUM(CASE WHEN depth = 3 THEN 1 ELSE 0 END) AS planets,
+      SUM(CASE WHEN depth >= 4 THEN 1 ELSE 0 END) AS moons,
+      SUM(CASE WHEN node_type = 'entry' THEN 1 ELSE 0 END) AS entries
+    FROM nodes;
+  `;
+
+  interface StatsRow {
+    total: number;
+    galaxies: number | null;
+    solarSystems: number | null;
+    planets: number | null;
+    moons: number | null;
+    entries: number | null;
+  }
+
+  const rows = expoDb.getAllSync<StatsRow>(statsQuery);
+  const row = rows[0];
+
+  return {
+    total: row?.total ?? 0,
+    galaxies: row?.galaxies ?? 0,
+    solarSystems: row?.solarSystems ?? 0,
+    planets: row?.planets ?? 0,
+    moons: row?.moons ?? 0,
+    entries: row?.entries ?? 0,
+  };
+}
+
+/**
+ * Exports all database nodes as a typed JSON object sorted by depth ASC.
+ */
+export async function exportDatabase(): Promise<ExportedDatabase> {
+  const sqlQuery = `
+    SELECT ${ALIASED_COLUMNS}
+    FROM nodes
+    ORDER BY depth ASC, created_at ASC;
+  `;
+
+  const rows = expoDb.getAllSync<RawNodeRow>(sqlQuery);
+  const rawNodes: Node[] = rows.map(r => ({
+    id: r.id,
+    parentId: r.parentId,
+    title: r.title,
+    nodeType: r.nodeType,
+    depth: r.depth,
+    icon: r.icon,
+    color: r.color,
+    status: r.status,
+    rating: r.rating,
+    tags: r.tags,
+    metadata: r.metadata,
+    notes: r.notes,
+    description: r.description,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    nodes: rawNodes,
+  };
+}
+
+/**
+ * Replaces the entire database with imported JSON data.
+ * Validates version and sorts nodes by depth ASC so parents insert before children.
+ * Runs atomically inside a transaction.
+ */
+export async function importDatabase(data: ExportedDatabase): Promise<void> {
+  if (!data || data.version !== 1 || !Array.isArray(data.nodes)) {
+    throw new Error('Invalid database backup format or unsupported version');
+  }
+
+  // Ensure there is at least a root node (depth 0, parentId null)
+  const hasRoot = data.nodes.some(
+    n => n.depth === 0 && (n.parentId === null || n.parentId === undefined)
+  );
+  if (!hasRoot) {
+    throw new Error('Corrupt backup: missing root "Me" node (depth === 0)');
+  }
+
+  // Sort by depth ASC so parents insert before children
+  const sortedNodes = [...data.nodes].sort((a, b) => a.depth - b.depth);
+
+  expoDb.withTransactionSync(() => {
+    // Drop all existing nodes (cascades automatically)
+    expoDb.runSync('DELETE FROM nodes;');
+
+    const insertSql = `
+      INSERT INTO nodes (
+        id, parent_id, title, node_type, depth, icon, color, status, rating, tags, metadata, notes, description, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+
+    for (const node of sortedNodes) {
+      expoDb.runSync(insertSql, [
+        node.id,
+        node.parentId ?? null,
+        node.title,
+        node.nodeType,
+        node.depth,
+        node.icon ?? null,
+        node.color ?? null,
+        node.status ?? null,
+        node.rating ?? null,
+        node.tags ?? '[]',
+        node.metadata ?? '{}',
+        node.notes ?? null,
+        node.description ?? null,
+        node.createdAt,
+        node.updatedAt,
+      ]);
+    }
+  });
 }
