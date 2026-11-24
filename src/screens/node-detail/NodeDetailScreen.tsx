@@ -16,9 +16,13 @@ import { EmptyState } from '@/components/common/EmptyState';
 
 export interface NodeDetailScreenProps {
   nodeId: string;
+  initialEdit?: boolean;
 }
 
-export default function NodeDetailScreen({ nodeId }: NodeDetailScreenProps) {
+export default function NodeDetailScreen({
+  nodeId,
+  initialEdit: _initialEdit,
+}: NodeDetailScreenProps) {
   const { node, loading, error } = useNode(nodeId || null);
 
   return (
