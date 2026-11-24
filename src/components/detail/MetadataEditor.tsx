@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
   Text,
-  TextInput,
   View,
   ViewStyle,
 } from 'react-native';
@@ -17,6 +19,7 @@ import {
   Radius,
   Spacing,
 } from '@/theme/tokens';
+import { TextInputField } from '../common/TextInputField';
 
 export interface MetadataEditorProps {
   metadata: Record<string, unknown>;
@@ -31,10 +34,11 @@ export function MetadataEditor({
   onChange,
   style,
 }: MetadataEditorProps) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newKey, setNewKey] = useState('');
-  const [newValue, setNewValue] = useState('');
-  const [addError, setAddError] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [fieldName, setFieldName] = useState('');
+  const [fieldValue, setFieldValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const entries = Object.entries(metadata);
 
@@ -44,25 +48,47 @@ export function MetadataEditor({
     onChange?.(updated);
   };
 
-  const handleAddField = () => {
-    const trimmedKey = newKey.trim();
-    const trimmedVal = newValue.trim();
+  const handleOpenAdd = () => {
+    setEditingKey(null);
+    setFieldName('');
+    setFieldValue('');
+    setError(null);
+    setModalVisible(true);
+  };
+
+  const handleOpenEdit = (key: string, val: unknown) => {
+    if (!editable) return;
+    setEditingKey(key);
+    setFieldName(key);
+    setFieldValue(typeof val === 'object' ? JSON.stringify(val) : String(val));
+    setError(null);
+    setModalVisible(true);
+  };
+
+  const handleSaveField = () => {
+    const trimmedKey = fieldName.trim();
+    const trimmedVal = fieldValue.trim();
 
     if (!trimmedKey) {
-      setAddError('Key is required');
+      setError('Field name is required');
       return;
     }
 
-    const updated = {
-      ...metadata,
-      [trimmedKey]: trimmedVal,
-    };
+    const updated = { ...metadata };
 
+    // If key name was changed during edit, delete old key
+    if (editingKey && editingKey !== trimmedKey) {
+      delete updated[editingKey];
+    }
+
+    updated[trimmedKey] = trimmedVal;
     onChange?.(updated);
-    setNewKey('');
-    setNewValue('');
-    setAddError(null);
-    setIsAdding(false);
+
+    setModalVisible(false);
+    setEditingKey(null);
+    setFieldName('');
+    setFieldValue('');
+    setError(null);
   };
 
   return (
@@ -70,7 +96,14 @@ export function MetadataEditor({
       {entries.length > 0 ? (
         <View style={styles.rowsContainer}>
           {entries.map(([key, val]) => (
-            <View key={key} style={styles.row}>
+            <Pressable
+              key={key}
+              style={({ pressed }) => [
+                styles.row,
+                editable && pressed && styles.rowPressed,
+              ]}
+              disabled={!editable}
+              onPress={() => handleOpenEdit(key, val)}>
               <View style={styles.keyCol}>
                 <Text style={styles.keyText} numberOfLines={1}>
                   {key}
@@ -84,18 +117,25 @@ export function MetadataEditor({
               </View>
 
               {editable ? (
-                <Pressable
-                  hitSlop={8}
-                  onPress={() => handleDelete(key)}
-                  style={styles.deleteBtn}>
-                  <Ionicons
-                    name="trash-outline"
-                    size={16}
-                    color={Colors.semantic.danger}
-                  />
-                </Pressable>
+                <View style={styles.rowActions}>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDelete(key);
+                    }}
+                    style={styles.deleteBtn}
+                    accessibilityLabel={`Delete ${key}`}
+                    accessibilityRole="button">
+                    <Ionicons
+                      name="trash-outline"
+                      size={16}
+                      color={Colors.semantic.danger}
+                    />
+                  </Pressable>
+                </View>
               ) : null}
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : !editable ? (
@@ -103,60 +143,93 @@ export function MetadataEditor({
       ) : null}
 
       {editable ? (
-        isAdding ? (
-          <View style={styles.addForm}>
-            <View style={styles.inputRow}>
-              <TextInput
-                value={newKey}
-                onChangeText={(t) => {
-                  setNewKey(t);
-                  if (addError) setAddError(null);
-                }}
-                placeholder="Field name"
-                placeholderTextColor={Colors.text.muted}
-                style={[styles.input, styles.keyInput]}
-                autoCapitalize="none"
-              />
-              <TextInput
-                value={newValue}
-                onChangeText={setNewValue}
-                placeholder="Value"
-                placeholderTextColor={Colors.text.muted}
-                style={[styles.input, styles.valInput]}
-              />
+        <Pressable
+          style={({ pressed }) => [
+            styles.addFieldBtn,
+            pressed && styles.addFieldBtnPressed,
+          ]}
+          onPress={handleOpenAdd}
+          accessibilityLabel="Add metadata field"
+          accessibilityRole="button">
+          <Ionicons name="add" size={14} color={Colors.tier.core} />
+          <Text style={styles.addFieldText}>Add Metadata Field</Text>
+        </Pressable>
+      ) : null}
+
+      {/* Keyboard-safe Dark Modal for Field Input / Edit */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable
+            style={styles.overlayBackdrop}
+            onPress={() => setModalVisible(false)}
+          />
+
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingKey ? 'Edit Field' : 'Add Metadata Field'}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={20} color={Colors.text.muted} />
+              </Pressable>
             </View>
 
-            {addError ? (
-              <Text style={styles.errorText}>{addError}</Text>
-            ) : null}
+            <TextInputField
+              label="Field Name"
+              value={fieldName}
+              onChangeText={(t) => {
+                setFieldName(t);
+                if (error) setError(null);
+              }}
+              placeholder="e.g. director, episodes, studio"
+              autoFocus={!editingKey}
+              autoCapitalize="none"
+              error={error}
+              style={styles.modalInput}
+            />
 
-            <View style={styles.formActions}>
+            <TextInputField
+              label="Value"
+              value={fieldValue}
+              onChangeText={setFieldValue}
+              placeholder="e.g. Christopher Nolan, 25"
+              autoFocus={Boolean(editingKey)}
+              onSubmitEditing={handleSaveField}
+              style={styles.modalInput}
+            />
+
+            <View style={styles.modalActions}>
               <Pressable
-                style={styles.cancelBtn}
-                onPress={() => {
-                  setIsAdding(false);
-                  setAddError(null);
-                }}>
+                style={({ pressed }) => [
+                  styles.cancelBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </Pressable>
 
-              <Pressable style={styles.saveBtn} onPress={handleAddField}>
-                <Text style={styles.saveBtnText}>Save</Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={handleSaveField}>
+                <Text style={styles.saveBtnText}>
+                  {editingKey ? 'Save' : 'Add'}
+                </Text>
               </Pressable>
             </View>
           </View>
-        ) : (
-          <Pressable
-            style={({ pressed }) => [
-              styles.addFieldBtn,
-              pressed && styles.addFieldBtnPressed,
-            ]}
-            onPress={() => setIsAdding(true)}>
-            <Ionicons name="add" size={14} color={Colors.tier.core} />
-            <Text style={styles.addFieldText}>Add Metadata Field</Text>
-          </Pressable>
-        )
-      ) : null}
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -180,6 +253,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border.subtle,
   },
+  rowPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
   keyCol: {
     width: 100,
   },
@@ -196,9 +272,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.text.primary,
   },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: Spacing.xs,
+  },
   deleteBtn: {
     padding: Spacing.xs,
-    marginLeft: Spacing.xs,
   },
   emptyText: {
     fontSize: FontSize.sm,
@@ -227,66 +307,73 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.medium,
     color: Colors.tier.core,
   },
-  addForm: {
-    marginTop: Spacing.sm,
-    backgroundColor: Colors.bg.surface,
-    borderWidth: 1,
-    borderColor: Colors.border.active,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: Spacing.sm,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: Colors.bg.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
   },
-  inputRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFill,
   },
-  input: {
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
     backgroundColor: Colors.bg.elevated,
+    borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.border.subtle,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs + 2,
-    fontSize: FontSize.sm,
+    padding: Spacing.lg,
+    zIndex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  modalTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
     color: Colors.text.primary,
   },
-  keyInput: {
-    width: 110,
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.xs,
+  modalInput: {
+    marginBottom: Spacing.sm + 2,
   },
-  valInput: {
-    flex: 1,
-  },
-  errorText: {
-    fontSize: FontSize.xs,
-    color: Colors.semantic.danger,
-  },
-  formActions: {
+  modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   cancelBtn: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
-    borderRadius: Radius.sm,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border.subtle,
   },
   cancelBtnText: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
     color: Colors.text.secondary,
   },
   saveBtn: {
     backgroundColor: Colors.tier.core,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
-    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    minWidth: 72,
+    alignItems: 'center',
   },
   saveBtnText: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
     color: Colors.bg.void,
+  },
+  btnPressed: {
+    opacity: 0.8,
   },
 });
