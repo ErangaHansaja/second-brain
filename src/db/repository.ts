@@ -4,8 +4,10 @@ import { db, expoDb } from './client';
 import { nodes, type Node, type NewNode } from './schema';
 import { Colors } from '../theme/tokens';
 import type {
+  BreadcrumbItem,
   CreateNodeInput,
   ParsedNode,
+  SearchResult,
   UpdateNodePatch,
 } from '../types';
 
@@ -27,6 +29,25 @@ export interface RawNodeRow {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Standard Aliased Column Selection for Raw SQLite Queries ───────
+const ALIASED_COLUMNS = `
+  id,
+  parent_id AS parentId,
+  title,
+  node_type AS nodeType,
+  depth,
+  icon,
+  color,
+  status,
+  rating,
+  tags,
+  metadata,
+  notes,
+  description,
+  created_at AS createdAt,
+  updated_at AS updatedAt
+`;
 
 // ── Internal Helpers ───────────────────────────────────────────────
 export function parseNode(raw: Node | RawNodeRow): ParsedNode {
@@ -256,4 +277,183 @@ export async function deleteNode(id: string): Promise<void> {
   }
 
   await db.delete(nodes).where(eq(nodes.id, id));
+}
+
+// ── Recursive Tree Queries & Movement ──────────────────────────────
+/**
+ * Recursively fetches all ancestors from root down to the parent of `nodeId`.
+ * Returns array of ParsedNode ordered by depth ASC.
+ */
+export async function getAncestors(nodeId: string): Promise<ParsedNode[]> {
+  const sqlQuery = `
+    WITH RECURSIVE ancestors AS (
+      SELECT ${ALIASED_COLUMNS}
+      FROM nodes
+      WHERE id = (SELECT parent_id FROM nodes WHERE id = ?)
+
+      UNION ALL
+
+      SELECT
+        n.id,
+        n.parent_id AS parentId,
+        n.title,
+        n.node_type AS nodeType,
+        n.depth,
+        n.icon,
+        n.color,
+        n.status,
+        n.rating,
+        n.tags,
+        n.metadata,
+        n.notes,
+        n.description,
+        n.created_at AS createdAt,
+        n.updated_at AS updatedAt
+      FROM nodes n
+      INNER JOIN ancestors a ON n.id = a.parentId
+    )
+    SELECT * FROM ancestors ORDER BY depth ASC;
+  `;
+
+  const rows = expoDb.getAllSync<RawNodeRow>(sqlQuery, [nodeId]);
+  return rows.map(parseNode);
+}
+
+/**
+ * Counts all descendant nodes recursively (excluding self).
+ * Returns 0 if the node has no descendants.
+ */
+export async function getDescendantCount(nodeId: string): Promise<number> {
+  const sqlQuery = `
+    WITH RECURSIVE subtree AS (
+      SELECT id FROM nodes WHERE parent_id = ?
+      UNION ALL
+      SELECT n.id FROM nodes n INNER JOIN subtree s ON n.parent_id = s.id
+    )
+    SELECT COUNT(*) AS count FROM subtree;
+  `;
+
+  const rows = expoDb.getAllSync<{ count: number }>(sqlQuery, [nodeId]);
+  return rows[0]?.count ?? 0;
+}
+
+/**
+ * Moves a node to a new parent folder.
+ * Validates circular references (target cannot be self or descendant).
+ * Updates node's parent and cascades depth changes to all descendants inside a transaction.
+ */
+export async function moveNode(
+  nodeId: string,
+  newParentId: string
+): Promise<ParsedNode> {
+  const node = await getNode(nodeId);
+  if (!node) {
+    throw new Error(`Node not found: ${nodeId}`);
+  }
+  const newParent = await getNode(newParentId);
+  if (!newParent) {
+    throw new Error(`Target parent not found: ${newParentId}`);
+  }
+
+  if (node.depth === 0) {
+    throw new Error('Cannot move root node');
+  }
+  if (nodeId === newParentId) {
+    throw new Error('Cannot move a node into itself');
+  }
+  if (newParent.nodeType !== 'folder') {
+    throw new Error('Target parent must be a folder');
+  }
+
+  // Fetch all descendant IDs using recursive CTE to prevent circular move
+  const subtreeQuery = `
+    WITH RECURSIVE subtree AS (
+      SELECT id FROM nodes WHERE parent_id = ?
+      UNION ALL
+      SELECT n.id FROM nodes n INNER JOIN subtree s ON n.parent_id = s.id
+    )
+    SELECT id FROM subtree;
+  `;
+  const descendantRows = expoDb.getAllSync<{ id: string }>(subtreeQuery, [nodeId]);
+  const descendantIds = new Set(descendantRows.map(r => r.id));
+
+  if (descendantIds.has(newParentId)) {
+    throw new Error('Circular move: target is a descendant');
+  }
+
+  const newDepth = newParent.depth + 1;
+  const depthDelta = newDepth - node.depth;
+  const now = new Date().toISOString();
+
+  // Execute depth cascade and parent reassignment atomically
+  expoDb.withTransactionSync(() => {
+    expoDb.runSync(
+      `UPDATE nodes SET parent_id = ?, depth = ?, updated_at = ? WHERE id = ?;`,
+      [newParentId, newDepth, now, nodeId]
+    );
+
+    if (descendantRows.length > 0) {
+      const placeholders = descendantRows.map(() => '?').join(',');
+      expoDb.runSync(
+        `UPDATE nodes SET depth = depth + ?, updated_at = ? WHERE id IN (${placeholders});`,
+        [depthDelta, now, ...descendantRows.map(r => r.id)]
+      );
+    }
+  });
+
+  const updated = await getNode(nodeId);
+  if (!updated) {
+    throw new Error(`Failed to retrieve moved node: ${nodeId}`);
+  }
+  return updated;
+}
+
+/**
+ * Searches nodes across title, notes, status, and tags using LIKE.
+ * Returns up to 50 results with their full breadcrumb ancestor chain.
+ */
+export async function searchNodes(query: string): Promise<SearchResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const pattern = `%${trimmed}%`;
+  const sqlQuery = `
+    SELECT ${ALIASED_COLUMNS}
+    FROM nodes
+    WHERE depth > 0
+      AND (
+        title LIKE ?
+        OR notes LIKE ?
+        OR status LIKE ?
+        OR tags LIKE ?
+      )
+    ORDER BY updated_at DESC
+    LIMIT 50;
+  `;
+
+  const rows = expoDb.getAllSync<RawNodeRow>(sqlQuery, [
+    pattern,
+    pattern,
+    pattern,
+    pattern,
+  ]);
+
+  const results: SearchResult[] = [];
+  for (const row of rows) {
+    const parsed = parseNode(row);
+    const ancestors = await getAncestors(row.id);
+    const breadcrumb: BreadcrumbItem[] = ancestors.map(a => ({
+      id: a.id,
+      title: a.title,
+      depth: a.depth,
+    }));
+    results.push({
+      ...parsed,
+      breadcrumb,
+    });
+  }
+
+  return results;
 }
