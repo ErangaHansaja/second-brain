@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
   View,
   Pressable,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontFamily, FontSize, FontWeight, Radius, Spacing } from '@/theme/tokens';
 import type { NodeStatus, ParsedNode, SearchResult } from '@/types';
 
-// Components
+// Layout & Primitives
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { TextInputField } from '@/components/common/TextInputField';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -26,6 +27,9 @@ import { MetadataEditor } from '@/components/detail/MetadataEditor';
 import { SearchResultCard } from '@/components/search/SearchResultCard';
 
 export default function ComponentGalleryScreen() {
+  // Action feedback banner state (replaces native white Alert.alert)
+  const [lastAction, setLastAction] = useState<string | null>(null);
+
   // Common states
   const [inputText, setInputText] = useState('Obsidian Design Engine');
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -98,210 +102,304 @@ export default function ComponentGalleryScreen() {
   ];
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>UI Component Gallery</Text>
-        <Text style={styles.headerSubtitle}>
-          Visual QA showcase of Step 6 atomic components & design tokens.
-        </Text>
-      </View>
-
-      {/* 1. Cosmic Tier Badges */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>1. Cosmic Tier Badges (Depths 0–4)</Text>
-        <View style={styles.rowWrap}>
-          <TierBadge depth={0} />
-          <TierBadge depth={1} />
-          <TierBadge depth={2} />
-          <TierBadge depth={3} />
-          <TierBadge depth={4} />
-        </View>
-      </View>
-
-      {/* 2. Breadcrumbs */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>2. Breadcrumb Navigation</Text>
-        <Breadcrumb
-          ancestors={[
-            { id: 'root', title: 'Me', depth: 0 },
-            { id: 'media', title: 'Media', depth: 1 },
-            { id: 'cinema', title: 'Cinema', depth: 2 },
+    <ScreenContainer avoidKeyboard>
+      {/* Top Header Bar with Back Button */}
+      <View style={styles.topBar}>
+        <Pressable
+          hitSlop={12}
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            styles.backBtn,
+            pressed && styles.backBtnPressed,
           ]}
-          current="Interstellar"
-          onPress={(id) => Alert.alert('Navigate', `Breadcrumb pressed: ${id}`)}
-        />
+          accessibilityLabel="Go back"
+          accessibilityRole="button">
+          <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
+        </Pressable>
+        <Text style={styles.topBarTitle}>Component Gallery</Text>
+        <View style={styles.topBarRight} />
       </View>
 
-      {/* 3. Node Cards (List & Grid) */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>3. Node Cards (List View)</Text>
-        <NodeCard
-          node={sampleFolder}
-          descendantCount={14}
-          onPress={(n) => Alert.alert('Folder Pressed', n.title)}
-        />
-        <NodeCard
-          node={sampleEntry}
-          onPress={(n) => Alert.alert('Entry Pressed', n.title)}
-        />
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        {/* Inline Feedback Banner */}
+        {lastAction ? (
+          <View style={styles.actionBanner}>
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color={Colors.tier.core}
+            />
+            <Text style={styles.actionBannerText} numberOfLines={1}>
+              {lastAction}
+            </Text>
+            <Pressable hitSlop={8} onPress={() => setLastAction(null)}>
+              <Ionicons name="close" size={14} color={Colors.text.muted} />
+            </Pressable>
+          </View>
+        ) : null}
 
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.md }]}>
-          Node Cards (Grid View)
-        </Text>
-        <View style={styles.gridRow}>
+        {/* Header intro */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>UI Component Gallery</Text>
+          <Text style={styles.headerSubtitle}>
+            Visual QA showcase of Step 6 atomic components & design tokens.
+          </Text>
+        </View>
+
+        {/* 1. Cosmic Tier Badges */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>1. Cosmic Tier Badges (Depths 0–4)</Text>
+          <View style={styles.rowWrap}>
+            <TierBadge depth={0} />
+            <TierBadge depth={1} />
+            <TierBadge depth={2} />
+            <TierBadge depth={3} />
+            <TierBadge depth={4} />
+          </View>
+        </View>
+
+        {/* 2. Breadcrumbs */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>2. Breadcrumb Navigation</Text>
+          <Breadcrumb
+            ancestors={[
+              { id: 'root', title: 'Me', depth: 0 },
+              { id: 'media', title: 'Media', depth: 1 },
+              { id: 'cinema', title: 'Cinema', depth: 2 },
+            ]}
+            current="Interstellar"
+            onPress={(id) => setLastAction(`Breadcrumb pressed: ${id}`)}
+          />
+        </View>
+
+        {/* 3. Node Cards (List & Grid) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>3. Node Cards (List View)</Text>
           <NodeCard
             node={sampleFolder}
             descendantCount={14}
-            viewMode="grid"
-            onPress={(n) => Alert.alert('Folder Pressed', n.title)}
+            onPress={(n) => setLastAction(`Folder pressed: ${n.title}`)}
           />
           <NodeCard
             node={sampleEntry}
-            viewMode="grid"
-            onPress={(n) => Alert.alert('Entry Pressed', n.title)}
+            onPress={(n) => setLastAction(`Entry pressed: ${n.title}`)}
+          />
+
+          <Text style={[styles.sectionTitle, { marginTop: Spacing.md }]}>
+            Node Cards (Grid View)
+          </Text>
+          <View style={styles.gridRow}>
+            <NodeCard
+              node={sampleFolder}
+              descendantCount={14}
+              viewMode="grid"
+              onPress={(n) => setLastAction(`Folder pressed: ${n.title}`)}
+            />
+            <NodeCard
+              node={sampleEntry}
+              viewMode="grid"
+              onPress={(n) => setLastAction(`Entry pressed: ${n.title}`)}
+            />
+          </View>
+        </View>
+
+        {/* 4. Entry Detail Atoms */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>4. Entry Detail Atoms</Text>
+
+          <Text style={styles.subHeading}>Status Chip (Tap to Change)</Text>
+          <StatusChip
+            status={currentStatus}
+            editable
+            onChange={(s) => {
+              setCurrentStatus(s);
+              setLastAction(`Status changed to: ${s}`);
+            }}
+          />
+
+          <Text style={styles.subHeading}>Rating Stars (Tap 1–10 to rate)</Text>
+          <RatingStars
+            rating={currentRating}
+            onRate={(r) => {
+              setCurrentRating(r);
+              setLastAction(`Rating updated to: ${r} / 10`);
+            }}
+          />
+
+          <Text style={styles.subHeading}>Tags Row (Editable #tags)</Text>
+          <TagsRow
+            tags={currentTags}
+            editable
+            onTagsChange={(tags) => {
+              setCurrentTags(tags);
+              setLastAction(`Tags updated: [${tags.join(', ')}]`);
+            }}
+          />
+
+          <Text style={styles.subHeading}>Metadata Key-Value Editor</Text>
+          <MetadataEditor
+            metadata={currentMeta}
+            editable
+            onChange={(meta) => {
+              setCurrentMeta(meta);
+              setLastAction(`Metadata updated (${Object.keys(meta).length} fields)`);
+            }}
           />
         </View>
-      </View>
 
-      {/* 4. Entry Detail Atoms */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>4. Entry Detail Atoms</Text>
-
-        <Text style={styles.subHeading}>Status Chip (Tap to Change)</Text>
-        <StatusChip
-          status={currentStatus}
-          editable
-          onChange={setCurrentStatus}
-        />
-
-        <Text style={styles.subHeading}>Rating Stars (Tap 1–10 to rate)</Text>
-        <RatingStars
-          rating={currentRating}
-          onRate={setCurrentRating}
-        />
-
-        <Text style={styles.subHeading}>Tags Row (Editable #tags)</Text>
-        <TagsRow
-          tags={currentTags}
-          editable
-          onTagsChange={setCurrentTags}
-        />
-
-        <Text style={styles.subHeading}>Metadata Key-Value Editor</Text>
-        <MetadataEditor
-          metadata={currentMeta}
-          editable
-          onChange={setCurrentMeta}
-        />
-      </View>
-
-      {/* 5. Search Result Card */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>5. Search Result Card</Text>
-        <SearchResultCard
-          result={sampleSearchResult}
-          onPress={(res) => Alert.alert('Search Result', res.title)}
-        />
-      </View>
-
-      {/* 6. Common UI Primitives */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>6. Common Input & Dialogs</Text>
-        <TextInputField
-          label="Title Field"
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Enter item title..."
-        />
-
-        <TextInputField
-          label="Field with Error"
-          value=""
-          onChangeText={() => {}}
-          placeholder="Required input..."
-          error="This field cannot be left blank"
-          style={{ marginTop: Spacing.sm }}
-        />
-
-        <View style={styles.buttonRow}>
-          <Pressable
-            style={styles.actionBtn}
-            onPress={() => {
-              setDestructiveDialog(false);
-              setDialogVisible(true);
-            }}>
-            <Text style={styles.actionBtnText}>Test Confirm Dialog</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.actionBtn, styles.dangerActionBtn]}
-            onPress={() => {
-              setDestructiveDialog(true);
-              setDialogVisible(true);
-            }}>
-            <Text style={[styles.actionBtnText, styles.dangerBtnText]}>
-              Test Delete Dialog
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.actionBtn}
-            onPress={() => setMoveModalVisible(true)}>
-            <Text style={styles.actionBtnText}>Test Move Modal</Text>
-          </Pressable>
+        {/* 5. Search Result Card */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>5. Search Result Card</Text>
+          <SearchResultCard
+            result={sampleSearchResult}
+            onPress={(res) => setLastAction(`Search result selected: ${res.title}`)}
+          />
         </View>
-      </View>
 
-      {/* 7. Empty State */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>7. Empty State Display</Text>
-        <EmptyState
-          icon="planet-outline"
-          title="No Items Discovered"
-          subtitle="Begin populating this domain by creating your first folder or entry."
-          actionLabel="Create Item"
-          onAction={() => Alert.alert('Empty State Action', 'Action button pressed')}
+        {/* 6. Common UI Primitives */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>6. Common Input & Dialogs</Text>
+          <TextInputField
+            label="Title Field"
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Enter item title..."
+          />
+
+          <TextInputField
+            label="Field with Error"
+            value=""
+            onChangeText={() => {}}
+            placeholder="Required input..."
+            error="This field cannot be left blank"
+            style={{ marginTop: Spacing.sm }}
+          />
+
+          <View style={styles.buttonRow}>
+            <Pressable
+              style={styles.actionBtn}
+              onPress={() => {
+                setDestructiveDialog(false);
+                setDialogVisible(true);
+              }}>
+              <Text style={styles.actionBtnText}>Test Confirm Dialog</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.actionBtn, styles.dangerActionBtn]}
+              onPress={() => {
+                setDestructiveDialog(true);
+                setDialogVisible(true);
+              }}>
+              <Text style={[styles.actionBtnText, styles.dangerBtnText]}>
+                Test Delete Dialog
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.actionBtn}
+              onPress={() => setMoveModalVisible(true)}>
+              <Text style={styles.actionBtnText}>Test Move Modal</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 7. Empty State */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>7. Empty State Display</Text>
+          <EmptyState
+            icon="planet-outline"
+            title="No Items Discovered"
+            subtitle="Begin populating this domain by creating your first folder or entry."
+            actionLabel="Create Item"
+            onAction={() => setLastAction('Empty State action button pressed')}
+          />
+        </View>
+
+        {/* Dialogs */}
+        <ConfirmDialog
+          visible={dialogVisible}
+          title={destructiveDialog ? 'Delete Node' : 'Confirm Action'}
+          message={
+            destructiveDialog
+              ? 'Are you sure you want to permanently delete this item and all its nested children? This cannot be undone.'
+              : 'Proceed with this structural update?'
+          }
+          confirmLabel={destructiveDialog ? 'Delete' : 'Proceed'}
+          destructive={destructiveDialog}
+          onConfirm={() => {
+            setDialogVisible(false);
+            setLastAction(destructiveDialog ? 'Item deleted (simulated)' : 'Action confirmed');
+          }}
+          onCancel={() => setDialogVisible(false)}
         />
-      </View>
 
-      {/* Dialogs */}
-      <ConfirmDialog
-        visible={dialogVisible}
-        title={destructiveDialog ? 'Delete Node' : 'Confirm Action'}
-        message={
-          destructiveDialog
-            ? 'Are you sure you want to permanently delete this item and all its nested children? This cannot be undone.'
-            : 'Proceed with this structural update?'
-        }
-        confirmLabel={destructiveDialog ? 'Delete' : 'Proceed'}
-        destructive={destructiveDialog}
-        onConfirm={() => {
-          setDialogVisible(false);
-          Alert.alert('Confirmed', 'Action was confirmed.');
-        }}
-        onCancel={() => setDialogVisible(false)}
-      />
-
-      <MoveNodeModal
-        visible={moveModalVisible}
-        nodeTitle="Interstellar (2014)"
-        folders={sampleTargetFolders}
-        currentParentId="sample-folder-1"
-        onSelect={(targetId) => {
-          setMoveModalVisible(false);
-          Alert.alert('Target Selected', `Moved to folder ID: ${targetId}`);
-        }}
-        onCancel={() => setMoveModalVisible(false)}
-      />
-    </ScrollView>
+        <MoveNodeModal
+          visible={moveModalVisible}
+          nodeTitle="Interstellar (2014)"
+          folders={sampleTargetFolders}
+          currentParentId="sample-folder-1"
+          onSelect={(targetId) => {
+            setMoveModalVisible(false);
+            setLastAction(`Moved to folder ID: ${targetId}`);
+          }}
+          onCancel={() => setMoveModalVisible(false)}
+        />
+      </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    backgroundColor: Colors.bg.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border.subtle,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  topBarTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  topBarRight: {
+    width: 36,
+  },
+  actionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.bg.surface,
+    borderWidth: 1,
+    borderColor: Colors.border.active,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  actionBannerText: {
+    flex: 1,
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.xs,
+    color: Colors.tier.core,
+  },
   screen: {
     flex: 1,
     backgroundColor: Colors.bg.void,
