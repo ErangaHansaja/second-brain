@@ -38,10 +38,16 @@ export function AddNodeFAB({
   onCreated,
   style,
 }: AddNodeFABProps) {
-  const defaultType: NodeType = parentDepth >= 2 ? 'entry' : 'folder';
+  const isRoot = parentDepth === 0;
+  const getDefaultType = (depth: number): NodeType => {
+    if (depth === 0) return 'folder';
+    return depth >= 2 ? 'entry' : 'folder';
+  };
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [nodeType, setNodeType] = useState<NodeType>(defaultType);
+  const [nodeType, setNodeType] = useState<NodeType>(() =>
+    getDefaultType(parentDepth)
+  );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +56,7 @@ export function AddNodeFAB({
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setNodeType(parentDepth >= 2 ? 'entry' : 'folder');
+    setNodeType(getDefaultType(parentDepth));
     setError(null);
   };
 
@@ -64,6 +70,9 @@ export function AddNodeFAB({
     resetForm();
     setModalVisible(false);
   };
+
+  const effectiveNodeType: NodeType = isRoot ? 'folder' : nodeType;
+  const isFolder = effectiveNodeType === 'folder';
 
   const handleCreate = async () => {
     if (isSubmitting) return;
@@ -79,14 +88,18 @@ export function AddNodeFAB({
 
       const targetDepth = parentDepth + 1;
       const defaultIcon =
-        nodeType === 'folder' ? 'folder-outline' : 'document-text-outline';
+        effectiveNodeType === 'folder'
+          ? 'folder-outline'
+          : 'document-text-outline';
 
       const newNode = await createNode({
         parentId,
         title: trimmedTitle,
-        nodeType,
+        nodeType: effectiveNodeType,
         description:
-          nodeType === 'folder' ? description.trim() || undefined : undefined,
+          effectiveNodeType === 'folder'
+            ? description.trim() || undefined
+            : undefined,
         icon: defaultIcon,
         color: tierColor(targetDepth),
       });
@@ -100,8 +113,6 @@ export function AddNodeFAB({
       setIsSubmitting(false);
     }
   };
-
-  const isFolder = nodeType === 'folder';
 
   return (
     <>
@@ -130,55 +141,61 @@ export function AddNodeFAB({
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Create New {isFolder ? 'Folder' : 'Entry'}
+                {isRoot
+                  ? 'New Category'
+                  : isFolder
+                  ? 'Create New Folder'
+                  : 'Create New Entry'}
               </Text>
               <Pressable hitSlop={8} onPress={handleClose} disabled={isSubmitting}>
                 <Ionicons name="close" size={22} color={Colors.text.muted} />
               </Pressable>
             </View>
 
-            {/* Type Selector Segment */}
-            <View style={styles.segmentContainer}>
-              <Pressable
-                style={[
-                  styles.segmentButton,
-                  isFolder && styles.segmentButtonActive,
-                ]}
-                onPress={() => setNodeType('folder')}>
-                <Ionicons
-                  name="folder-outline"
-                  size={16}
-                  color={isFolder ? Colors.tier.core : Colors.text.muted}
-                />
-                <Text
+            {/* Type Selector Segment (hidden at root level where only folders are allowed) */}
+            {!isRoot ? (
+              <View style={styles.segmentContainer}>
+                <Pressable
                   style={[
-                    styles.segmentText,
-                    isFolder && styles.segmentTextActive,
-                  ]}>
-                  Folder
-                </Text>
-              </Pressable>
+                    styles.segmentButton,
+                    isFolder && styles.segmentButtonActive,
+                  ]}
+                  onPress={() => setNodeType('folder')}>
+                  <Ionicons
+                    name="folder-outline"
+                    size={16}
+                    color={isFolder ? Colors.tier.core : Colors.text.muted}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      isFolder && styles.segmentTextActive,
+                    ]}>
+                    Folder
+                  </Text>
+                </Pressable>
 
-              <Pressable
-                style={[
-                  styles.segmentButton,
-                  !isFolder && styles.segmentButtonActive,
-                ]}
-                onPress={() => setNodeType('entry')}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={16}
-                  color={!isFolder ? Colors.tier.core : Colors.text.muted}
-                />
-                <Text
+                <Pressable
                   style={[
-                    styles.segmentText,
-                    !isFolder && styles.segmentTextActive,
-                  ]}>
-                  Entry
-                </Text>
-              </Pressable>
-            </View>
+                    styles.segmentButton,
+                    !isFolder && styles.segmentButtonActive,
+                  ]}
+                  onPress={() => setNodeType('entry')}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={16}
+                    color={!isFolder ? Colors.tier.core : Colors.text.muted}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      !isFolder && styles.segmentTextActive,
+                    ]}>
+                    Entry
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             {/* Form Fields */}
             <ScrollView
