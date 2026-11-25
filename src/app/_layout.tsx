@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { DatabaseProvider } from '@/components/providers/DatabaseProvider';
@@ -19,7 +19,7 @@ const ObsidianTheme = {
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.bg.void }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg.void }}>
       <ThemeProvider value={ObsidianTheme}>
         <DatabaseProvider>
           <StatusBar style="light" />
@@ -32,6 +32,6 @@ export default function RootLayout() {
           </Stack>
         </DatabaseProvider>
       </ThemeProvider>
-    </View>
+    </GestureHandlerRootView>
   );
 }
