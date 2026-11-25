@@ -468,6 +468,11 @@ export default function NodeDetailScreen({
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>Tags</Text>
                   {isEditing ? (
+                    <Text style={styles.helperCaption}>
+                      Quick labels for search (e.g. #isekai, #waiting)
+                    </Text>
+                  ) : null}
+                  {isEditing ? (
                     <TagsRow
                       tags={tags}
                       editable
@@ -483,6 +488,11 @@ export default function NodeDetailScreen({
                 {/* Details (Metadata) */}
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>Details</Text>
+                  {isEditing ? (
+                    <Text style={styles.helperCaption}>
+                      Optional custom facts (e.g. Season: 3, Price: 1500)
+                    </Text>
+                  ) : null}
                   <MetadataEditor
                     metadata={isEditing ? metadata : node.metadata}
                     editable={isEditing}
@@ -759,6 +769,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.text.muted,
     lineHeight: 20,
+  },
+  helperCaption: {
+    fontSize: FontSize.xs,
+    color: Colors.text.muted,
+    lineHeight: 16,
   },
   notesReadText: {
     fontSize: FontSize.md,

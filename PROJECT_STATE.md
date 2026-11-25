@@ -109,7 +109,7 @@ second-brain/
     │
     ├── constants/
     │   ├── starterTemplates.ts            # Obsidian-themed template trees with Ionicons names
-    │   └── statuses.ts                    # Preset status configs (Completed, In Progress, Liked, etc.)
+    │   └── statuses.ts                    # Universal status presets (Planned, In Progress, Completed, Dropped)
     │
     ├── db/
     │   ├── client.ts                      # openDatabaseSync, PRAGMA foreign_keys = ON, drizzle()
@@ -192,8 +192,10 @@ second-brain/
    - Bottom tab bar uses `@expo/vector-icons` (`Ionicons` `planet`, `search`, `settings`).
    - Explorer tab sets `headerShown: false` to avoid double headers and render cleanly inside `ScreenContainer`.
 5. **Streamlined Creation & Entry Detail Editor (Step 9 Delivered):**
-   - **Frictionless Creation (`AddNodeFAB`):** Removed the 12-icon picker grid in favor of clean type defaults (`folder-outline` / `document-text-outline`). Defaults `nodeType` to `'entry'` when `parentDepth >= 2`, wraps the modal in `KeyboardAvoidingView`, and auto-navigates newly created entries directly into `/node/${id}?edit=1`.
-   - **Entry vs. Folder Separation (`NodeDetailScreen`):** Entry nodes display Status (`StatusChip`), Rating (`RatingStars`), Tags (`TagsRow`), Details (`MetadataEditor`), and Notes & Thoughts (`Text` / multiline `TextInputField`). Folder nodes stay minimal (Title, Description, nested item count).
+   - **Root Level Locked to Folders:** Depth 0 (`Me`) is reserved strictly for categories/folders: `AddNodeFAB` hides the Folder/Entry switch and titles the modal `"New Category"` at root, while `repository.ts` (`createNode`, `moveNode`, `getMoveTargets`) prevents creating or moving entries directly under depth 0.
+   - **Frictionless Creation (`AddNodeFAB`):** Removed the 12-icon picker grid in favor of clean type defaults (`folder-outline` / `document-text-outline`). Defaults `nodeType` to `'entry'` when `parentDepth >= 2` (`'folder'` at depth 1), wraps the modal in `KeyboardAvoidingView`, and auto-navigates newly created entries directly into `/node/${id}?edit=1`.
+   - **Universal Status Presets:** Streamlined `NodeStatus` and `STATUS_PRESETS` to 4 universal states: `Planned`, `In Progress`, `Completed`, and `Dropped`.
+   - **Entry vs. Folder Separation (`NodeDetailScreen`):** Entry nodes display Status (`StatusChip`), Rating (`RatingStars`), Tags (`TagsRow` with edit-mode search hint), Details (`MetadataEditor` with clean `"No details added"` view text and edit-mode example hints), and Notes & Thoughts (`Text` / multiline `TextInputField`). Folder nodes stay minimal (Title, Description, nested item count).
    - **Null-Safe Field Clearing:** Clearing `status`, `rating`, `notes`, or `description` passes explicit `null` (never `undefined`) inside `UpdateNodePatch` so SQLite cleanly clears columns on Save.
    - **Dirty Detection & Safe Navigation:** Compares draft state against persisted `node`, prompting a dark `ConfirmDialog` (`"Discard Unsaved Changes?"`) on top bar Back, breadcrumb jump, or Android hardware `BackHandler` when unsaved edits exist.
 
