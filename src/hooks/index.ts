@@ -5,3 +5,4 @@ export * from './useAncestors';
 export * from './useDescendantCount';
 export * from './useSearch';
 export * from './useDatabaseStats';
+export * from './useAllNodes';

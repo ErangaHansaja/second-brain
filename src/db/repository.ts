@@ -1,5 +1,5 @@
 import * as Crypto from 'expo-crypto';
-import { eq, isNull, desc, sql } from 'drizzle-orm';
+import { asc, eq, isNull, desc, sql } from 'drizzle-orm';
 import { db, expoDb } from './client';
 import { nodes, type Node, type NewNode } from './schema';
 import { Colors } from '../theme/tokens';
@@ -164,6 +164,18 @@ export async function getChildren(parentId: string): Promise<ParsedNode[]> {
       desc(nodes.nodeType),
       sql`${nodes.title} COLLATE NOCASE ASC`
     );
+
+  return rows.map(parseNode);
+}
+
+/**
+ * Retrieves all nodes in the universe ordered by depth ASC, then title alphabetically.
+ */
+export async function getAllNodes(): Promise<ParsedNode[]> {
+  const rows = await db
+    .select()
+    .from(nodes)
+    .orderBy(asc(nodes.depth), sql`${nodes.title} COLLATE NOCASE ASC`);
 
   return rows.map(parseNode);
 }

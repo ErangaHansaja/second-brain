@@ -30,6 +30,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="cosmos"
+        options={{
+          title: 'Cosmos',
+          headerShown: false,
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? 'aperture' : 'aperture-outline'}
+              size={size ?? 22}
+              color={color as string}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="search"
         options={{
           title: 'Search',
