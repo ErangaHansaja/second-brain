@@ -2,44 +2,45 @@
 
 > **Branch:** `feat/step-11-settings-screen`  
 > **Base:** `dev` (at `53b188f` — Step 10 merged)  
-> **Status:** Completed & Verified  
+> **Status:** Completed & Verified (PR #10 Review Fixes Applied)  
 
 ---
 
 ## 1. Overview & Objectives
 
-Step 11 turns Settings into the central local data control screen for Second Brain, pairing real-time cosmic tier telemetry with validated JSON backup/restore capabilities:
+Step 11 turns Settings into the central local data control screen for Second Brain, pairing real-time cosmic tier telemetry with resilient, cross-platform JSON backup/restore capabilities:
 
-1. **SDK 58 Backup & Validation Utility (`src/utils/backup.ts`):**
+1. **Resilient SDK 58 Backup & Validation Utility (`src/utils/backup.ts`):**
    - Installed `expo-document-picker` (`~58.0.5`) via `npx expo install`.
-   - Built `exportBackupToFile()` using the non-deprecated Expo SDK 58 `File` and `Paths.cache` class API (`file.create({ intermediates: true, overwrite: true })` + `file.write(...)`), generating timestamped files (`second-brain-backup-YYYY-MM-DD.json`) and presenting the OS share sheet via `expo-sharing` (`mimeType: 'application/json'`, `UTI: 'public.json'`).
-   - Built `pickAndParseBackupFile()` configured with `type: ['application/json', 'text/plain', '*/*']` and `copyToCacheDirectory: true` so Android file managers never grey out `.json` files. Reads UTF-8 text via `File.text()` and strictly validates:
-     - `version === 1`
-     - Non-empty `nodes` array
-     - Valid required `id`, `title`, `nodeType` (`'folder' | 'entry'`), and non-negative integer `depth` on every row
-     - Root parent invariants (`depth === 0` <-> `parentId === null`) and exactly 1 folder root node (`depth === 0`).
-2. **Complete Settings & Data Screen (`src/screens/settings/SettingsScreen.tsx`):**
-   - Updated `src/app/(tabs)/_layout.tsx` (`headerShown: false` on `settings`) and wrapped `SettingsScreen` in `<ScreenContainer>` + `<ScrollView>`.
-   - **Overview Grid:** Compact 2-column × 3-row metric grid showing color-coded tier dots and monospace counts (**Total**, **Entries**, **Galaxies**, **Solar Systems**, **Planets**, **Moons**) refreshed automatically on focus via `useFocusEffect`.
-   - **Starter Structure:** Clean **"Load Starter Categories"** action invoking `seedStarterTemplates(rootNode.id)` and automatically disabling with `"Starter categories already present"` once galaxies exist.
-   - **Local Backup (Export / Import):**
-     - **"Export Backup (JSON)"** saves and shares the full SQLite dump with loading feedback and a dark teal success banner.
-     - **"Import Backup (JSON)"** picks and validates the JSON file *before* prompting a destructive `<ConfirmDialog>` showing the exact item count to restore. On confirmation, calls `importDatabase()`, refreshes `rootNode` and `stats`, and displays a success banner with an `"Open Explorer"` jump straight to the restored root UUID.
-   - **Developer Tools (`__DEV__` only):** Preserved **"Run DB Self-Test"** and **"Open UI Component Gallery"** cleanly in a bottom developer section.
+   - Built `exportBackupToFile()` using Expo SDK 58 `File` and `Paths.cache` (`file.create({ intermediates: true, overwrite: true })` + `file.write(...)`), generating timestamped files (`second-brain-backup-YYYY-MM-DD.json`) and presenting the OS share sheet via `expo-sharing` (`mimeType: 'application/json'`, `UTI: 'public.json'`).
+   - Built `pickAndParseBackupFile()` configured with `type: ['application/json', 'text/plain', '*/*']` and `copyToCacheDirectory: true` so Android file managers never grey out `.json` files.
+   - Added `readBackupUriAsText(uri)` implementing a 3-stage fallback chain resilient to Android `content://` URIs and special characters such as parentheses (`second-brain-backup-2026-11-25(1).json`):
+     1. `File.text()` across raw, `encodeURI`, and `decodeURI` candidates.
+     2. `readAsStringAsync(uri, { encoding: 'utf8' })` from `expo-file-system/legacy`.
+     3. Native `fetch(uri)` -> `response.text()`.
+   - Strips UTF-8 BOM (`\uFEFF`) before `JSON.parse`, logs underlying errors with `console.warn('[Backup] Import failed:', err)` in `__DEV__`, and strictly validates `version === 1`, non-empty `nodes[]`, valid row types, root invariants (`depth === 0` <-> `parentId === null`), and single folder root.
+2. **Pinned Feedback & Decluttered `SettingsScreen` (`src/screens/settings/SettingsScreen.tsx`):**
+   - Updated `src/app/(tabs)/_layout.tsx` (`headerShown: false` on `settings`) and wrapped `SettingsScreen` in `<ScreenContainer>`.
+   - Pinned the top **Settings** header and inline **Feedback Banner** outside `<ScrollView>` so success/error banners remain immediately visible even when scrolled down tapping Export or Import.
+   - **Overview Grid:** Compact 2×3 metric grid (**Total**, **Entries**, **Galaxies**, **Solar Systems**, **Planets**, **Moons**) refreshed automatically on focus via `useFocusEffect`.
+   - **Starter Structure:** Renders **"Load Starter Categories"** only when `stats !== null && stats.galaxies === 0` (automatically hidden once categories exist so Local Backup fits cleanly above the fold).
+   - **Local Backup (Export / Import) & Root Recovery:** Validates picked JSON *before* showing destructive `<ConfirmDialog>`, restores via `importDatabase()`, refreshes stats/root, displays `"Restored N items from backup"` with `"Open Explorer"` quick jump, and tracks `prevRootIdRef` in `ExplorerScreen.tsx` so tapping the Explorer bottom tab snaps straight to a newly restored root UUID.
+   - **Developer Tools (`__DEV__` only):** Preserved **"Run DB Self-Test"** and **"Open UI Component Gallery"**.
 
 ---
 
 ## 2. File Changes
 
 ### Files Created
-- `src/utils/backup.ts` — Export to JSON file + share sheet, and document-picker read + strict backup validation.
+- `src/utils/backup.ts` — JSON export to file + share sheet, 3-stage resilient URI reading, and strict backup validation.
 - `docs/walkthroughs/step-11.md` — This walkthrough report.
 
 ### Files Modified
 - `package.json` & `package-lock.json` — Installed `expo-document-picker` (`~58.0.5`).
 - `src/app/(tabs)/_layout.tsx` — Set `headerShown: false` on `settings` tab.
-- `src/screens/settings/SettingsScreen.tsx` — Implemented full Overview, Starter Structure, Local Backup (Export/Import), feedback banner, and preserved `__DEV__` tools.
-- `PROJECT_STATE.md` — Marked Step 10 merged, Step 11 complete, added `src/utils/backup.ts` and `expo-document-picker`.
+- `src/screens/settings/SettingsScreen.tsx` — Pinned header/feedback banner above `ScrollView`, auto-hid Starter Structure card once seeded, added Overview, Local Backup, and preserved `__DEV__` tools.
+- `src/screens/explorer/ExplorerScreen.tsx` — Tracked `prevRootIdRef` so Explorer automatically resets to the restored root UUID when switching back after a backup restore.
+- `PROJECT_STATE.md` — Updated Step 11 state, file tree, and architectural decisions.
 
 ---
 
@@ -47,9 +48,12 @@ Step 11 turns Settings into the central local data control screen for Second Bra
 
 | Commit Hash | Message | Scope |
 |:---|:---|:---|
-| `189880e` | `feat(backup): install expo-document-picker and add validated JSON backup file utility` | `expo-document-picker` & `src/utils/backup.ts` |
-| `fa94e8d` | `feat(screen): implement SettingsScreen with live stats, starter seeding, and JSON export/import` | Full Settings screen & tab layout update |
-| *(pending)* | `docs: update PROJECT_STATE.md and add step-11 walkthrough` | Living project state & walkthrough |
+| `189880e` | `feat(backup): install expo-document-picker and add validated JSON backup file utility` | `expo-document-picker` & initial `src/utils/backup.ts` |
+| `fa94e8d` | `feat(screen): implement SettingsScreen with live stats, starter seeding, and JSON export/import` | Initial Settings screen & tab layout update |
+| `a708434` | `docs: update PROJECT_STATE.md and add step-11 walkthrough` | Initial Step 11 docs |
+| `df9a116` | `fix(backup): make Android backup file reading resilient to content URIs and special characters` | 3-stage `readBackupUriAsText`, BOM strip & `__DEV__` logging |
+| `826412f` | `fix(settings): pin feedback banner outside ScrollView and hide Starter Structure once seeded` | Pinned banner, conditional starter card & Explorer root snap |
+| *(pending)* | `docs: update step-11 walkthrough and PROJECT_STATE with import and layout fixes` | Updated docs & state |
 
 ---
 
@@ -65,10 +69,8 @@ Step 11 turns Settings into the central local data control screen for Second Bra
    ```bash
    npx expo start
    ```
-   - **Overview & Auto-Refresh:** Open the **Settings** tab -> confirm no duplicate header bar and verify the 2×3 Overview stat grid accurately counts Total, Entries, Galaxies, Solar Systems, Planets, and Moons. Create an entry in Explorer, switch back to Settings, and verify counts update automatically.
-   - **Starter Categories:** On an empty DB, tap **"Load Starter Categories"** -> confirm success banner appears, counts jump immediately, and the button disables showing `"Starter categories already present"`.
-   - **Export Backup (JSON):** Tap **"Export Backup (JSON)"** -> confirm native Android Share sheet opens with `second-brain-backup-YYYY-MM-DD.json`. Save it to Downloads or Drive.
-   - **Import Backup Validation & Restore:**
-     - Create or delete an item so the DB differs from your saved backup.
-     - Tap **"Import Backup (JSON)"**, pick a non-backup or malformed `.json` file -> confirm dark error banner displays a clear validation message without touching local SQLite data.
-     - Tap **"Import Backup (JSON)"** again and pick the valid exported `.json` file -> verify dark `"Restore Backup"` confirmation dialog lists the item count, tap **Restore**, confirm teal `"Restored N items from backup"` banner appears, and tap **"Open Explorer"** to see the restored tree intact.
+   - **Decluttered Layout & Pinned Banner:** Open **Settings** when categories are already loaded -> confirm Starter Structure card is hidden and Overview + Local Backup sit prominently. Scroll down, tap **Export Backup (JSON)** or **Import Backup (JSON)** -> confirm the teal/red feedback banner remains pinned cleanly at the top below the Settings header.
+   - **Export + Android Parenthesis Filename Import:**
+     - Export backup twice (or save as `second-brain-backup-YYYY-MM-DD(1).json` in Downloads).
+     - Modify or add a dummy node in Explorer.
+     - Return to Settings, tap **Import Backup (JSON)**, select `second-brain-backup-YYYY-MM-DD(1).json` -> confirm `"Restore Backup"` dialog lists the node count, tap **Restore**, confirm pinned teal `"Restored N items from backup"` banner appears, and tap the **Explorer** bottom tab icon (or **"Open Explorer"**) to verify the restored hierarchy appears immediately.
