@@ -128,6 +128,21 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
     refresh: refreshAncestors,
   } = useAncestors(currentNodeId);
 
+  // Recover to root automatically if active node no longer resolves (e.g. backup restore or deletion)
+  useEffect(() => {
+    if (
+      !rootLoading &&
+      !nodeLoading &&
+      !nodeError &&
+      rootNode &&
+      currentNodeId &&
+      currentNode === null &&
+      currentNodeId !== rootNode.id
+    ) {
+      setCurrentNodeId(rootNode.id);
+    }
+  }, [rootLoading, nodeLoading, nodeError, rootNode, currentNodeId, currentNode]);
+
   const handleRefresh = useCallback(() => {
     refreshRoot();
     refreshNode();

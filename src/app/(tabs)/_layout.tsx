@@ -10,6 +10,7 @@ export default function TabLayout() {
         headerStyle: styles.header,
         headerTintColor: Colors.text.primary,
         headerTitleStyle: styles.headerTitle,
+        sceneStyle: { backgroundColor: Colors.bg.void },
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: Colors.tier.core,
         tabBarInactiveTintColor: Colors.text.muted,
