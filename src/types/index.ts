@@ -66,6 +66,11 @@ export interface CreateNodeInput {
   description?: string;
 }
 
+export interface SearchFilters {
+  nodeType?: NodeType;
+  status?: string;
+}
+
 export type UpdateNodePatch = Partial<
   Omit<ParsedNode, 'id' | 'createdAt' | 'updatedAt' | 'parentId' | 'depth'>
 >;
