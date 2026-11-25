@@ -75,10 +75,9 @@ second-brain/
 │   └── reset-project.js
 │
 └── src/
-│   └── app/                               # STRICTLY thin Expo Router route wrappers (5-10 lines)
-│       ├── _layout.tsx                    # Root Stack with ObsidianTheme, dark StatusBar & DatabaseProvider
-│       ├── dev-gallery.tsx                # Thin route -> ComponentGalleryScreen (__DEV__ guarded)
-│       ├── node/                          # Node Detail Stack routes
+    ├── app/                               # STRICTLY thin Expo Router route wrappers (5-10 lines)
+    │   ├── _layout.tsx                    # Root Stack with ObsidianTheme, dark StatusBar & DatabaseProvider
+    │   ├── node/                          # Node Detail Stack routes
 │       │   ├── _layout.tsx                # Stack layout (headerShown: false, void background)
 │       │   └── [nodeId].tsx               # Thin route -> NodeDetailScreen (forwards edit param)
 │       └── (tabs)/                        # Bottom tab navigator
@@ -118,8 +117,7 @@ second-brain/
     │   ├── client.ts                      # openDatabaseSync, PRAGMA foreign_keys = ON, drizzle()
     │   ├── migrations.ts                  # Re-exporting drizzle/migrations
     │   ├── repository.ts                  # CRUD, recursive CTEs, moveNode, getMoveTargets, search, export/import
-    │   ├── schema.ts                      # nodes table with self-referencing foreign key
-    │   └── selfTest.ts                    # 8 on-device automated repository verification checks
+    │   └── schema.ts                      # nodes table with self-referencing foreign key
     │
     ├── hooks/                             # Reactive custom data hooks with race-condition safety
     │   ├── index.ts                       # Clean barrel export for all hooks
@@ -132,8 +130,6 @@ second-brain/
     │   └── useSearch.ts                   # Debounced full-text query with request ID guard
     │
     ├── screens/                           # Real feature screen implementations
-    │   ├── dev/
-    │   │   └── ComponentGalleryScreen.tsx # Interactive visual QA gallery of all Step 6 components
     │   ├── explorer/
     │   │   ├── ExplorerNodeItem.tsx       # Wrapper calling useDescendantCount per folder card
     │   │   ├── ExplorerScreen.tsx         # Full drill-down Explorer with CRUD modals & auto-open new entries
@@ -144,7 +140,7 @@ second-brain/
     │   ├── search/
     │   │   └── SearchScreen.tsx           # Full Global Search with live filtering & deep jump
     │   └── settings/
-    │       └── SettingsScreen.tsx         # Live stats, starter seeding, JSON backup & __DEV__ tools
+    │       └── SettingsScreen.tsx         # Live stats, starter seeding, backup engine & version footer
     │
     ├── theme/
     │   └── tokens.ts                      # Obsidian black-hole palette, typography, spacing, tier helpers
@@ -218,7 +214,7 @@ second-brain/
 8. **Phase 1 Polish, Safe Haptics & Release Hardening (Step 12 Delivered):**
    - **Safe Tactile Haptics (`src/utils/haptics.ts`):** `hapticLight()`, `hapticMedium()`, `hapticSuccess()`, and `hapticWarning()` guard against `Platform.OS === 'web'` and catch rejected promises/unavailable hardware quietly across rating dots, Search filter pills, view mode toggles, long-press actions, node creation, saves, backups, and destructive confirmations.
    - **Settled Node Lookup & Post-Restore Recovery (`useNode` + `ExplorerScreen`):** `useNode` tracks `settledId` so transitioning node IDs report `loading: true` without 1-frame stale null races, enabling `ExplorerScreen` to recover back to `rootNode.id` automatically whenever `!rootLoading && !nodeLoading && currentNode === null`.
-   - **Dark Boot & Production Guards (`app.json`, `_layout.tsx`, `dev-gallery.tsx`):** `app.json` locks `userInterfaceStyle: "dark"` with `#04050A` root/splash/adaptiveIcon background colors, root `_layout.tsx` wraps `<Stack>` in an Obsidian `DarkTheme` (`ThemeProvider`) + `#04050A` view + `<StatusBar style="light" />`, `(tabs)/_layout.tsx` sets `sceneStyle: { backgroundColor: '#04050A' }`, and `dev-gallery.tsx` redirects to `/(tabs)` when `!__DEV__`.
+   - **Dark Boot & Production Cleanup (`app.json`, `_layout.tsx`, `SettingsScreen.tsx`):** `app.json` locks `userInterfaceStyle: "dark"` with `#04050A` root/splash/adaptiveIcon background colors, root `_layout.tsx` wraps `<Stack>` in an Obsidian `DarkTheme` (`ThemeProvider`) + `#04050A` view + `<StatusBar style="light" />`, `(tabs)/_layout.tsx` sets `sceneStyle: { backgroundColor: '#04050A' }`, temporary dev scaffolding (`src/app/dev-gallery.tsx`, `src/screens/dev/ComponentGalleryScreen.tsx`, `src/db/selfTest.ts`) and Settings' Developer Tools section were removed, and Settings now renders a subtle `Second Brain · v1.0.0` footer.
 
 ---
 

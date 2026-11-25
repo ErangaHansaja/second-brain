@@ -17,7 +17,7 @@ A local-first personal knowledge and life organizer built with **Expo (React Nat
   - Debounced full-text SQLite query across titles, notes, tags, metadata JSON, and statuses, with full breadcrumb paths on every match.
   - Filter pills for `All`, `Entries`, `Folders`, and each status (tapping a status loads matching entries immediately without needing search text).
 - **Settings, Seeding & JSON Backups**
-  - Live database totals by cosmic tier, one-tap starter template seeding (`Food`, `Entertainment`, `Work`, `Study`, `Hobbies`) when empty, and `__DEV__`-only DB self-test + UI Component Gallery (`/dev-gallery`, redirected in production builds).
+  - Live database totals by cosmic tier and one-tap starter template seeding (`Food`, `Entertainment`, `Work`, `Study`, `Hobbies`) when empty.
   - Timestamped JSON export (`second-brain-backup-YYYY-MM-DD.json`) via OS share sheet and validated backup import with destructive restore confirmation and automatic Explorer root recovery.
 - **Tactile Haptics & Dark Boot**
   - Safe `expo-haptics` feedback utility (`Platform.OS !== 'web'` + `try/catch`) wired across creation, rating taps, filter toggles, view switches, saves, and destructive confirmations.
@@ -42,12 +42,12 @@ second-brain/
 ├── drizzle/                       # Generated SQLite schema migrations
 ├── docs/walkthroughs/             # Per-step verification notes (step-2 .. step-12)
 └── src/
-    ├── app/                       # Thin Expo Router route wrappers (tabs, node/[nodeId], dev-gallery)
+    ├── app/                       # Thin Expo Router route wrappers (tabs, node/[nodeId])
     ├── components/                # Reusable UI atoms (common, detail, explorer, layout, providers, search)
     ├── constants/                 # Status presets & starter folder templates
-    ├── db/                        # SQLite client, schema, repository (CRUD + recursive CTEs), self-test
+    ├── db/                        # SQLite client, schema, and repository (CRUD + recursive CTEs)
     ├── hooks/                     # Race-safe data hooks (useRootNode, useNode, useChildren, useSearch, ...)
-    ├── screens/                   # Feature screen implementations (Explorer, Detail, Search, Settings, Dev)
+    ├── screens/                   # Feature screen implementations (Explorer, Detail, Search, Settings)
     ├── theme/                     # Obsidian palette, typography, spacing, and cosmic tier helpers
     ├── types/                     # Domain models, parsed node shapes, and backup contracts
     └── utils/                     # SDK 58 JSON backup engine & safe haptics helpers
