@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -71,11 +71,20 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
   const [moveTargets, setMoveTargets] = useState<MoveTargetFolder[]>([]);
   const [deleteChildCount, setDeleteChildCount] = useState<number>(0);
 
-  // Sync root node on initial load when no nodeId is specified
+  const prevRootIdRef = useRef<string | null>(null);
+
+  // Sync root node on initial load and snap cleanly if root UUID changes (e.g., backup restore)
   useEffect(() => {
-    if (rootNode && !currentNodeId) {
+    if (!rootNode) return;
+    if (!currentNodeId) {
+      setCurrentNodeId(rootNode.id);
+    } else if (
+      prevRootIdRef.current &&
+      prevRootIdRef.current !== rootNode.id
+    ) {
       setCurrentNodeId(rootNode.id);
     }
+    prevRootIdRef.current = rootNode.id;
   }, [rootNode, currentNodeId]);
 
   // Sync incoming route param changes (e.g. deep-jump from Search)
