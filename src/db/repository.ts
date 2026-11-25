@@ -10,6 +10,7 @@ import type {
   DatabaseStats,
   ExportedDatabase,
   ParsedNode,
+  SearchFilters,
   SearchResult,
   UpdateNodePatch,
 } from '../types';
@@ -486,36 +487,56 @@ export async function getMoveTargets(
 }
 
 /**
- * Searches nodes across title, notes, status, and tags using LIKE.
- * Returns up to 50 results with their full breadcrumb ancestor chain.
+ * Searches nodes across title, notes, status, tags, and metadata using LIKE,
+ * or lists matching entries when a status filter is active without a query.
+ * Returns up to 50 results ordered by updated_at DESC with ancestor breadcrumbs.
  */
-export async function searchNodes(query: string): Promise<SearchResult[]> {
+export async function searchNodes(
+  query: string,
+  filters?: SearchFilters
+): Promise<SearchResult[]> {
   const trimmed = query.trim();
-  if (!trimmed) {
+  const hasQuery = trimmed.length > 0;
+  const statusFilter = filters?.status?.trim() || undefined;
+  const nodeTypeFilter = filters?.nodeType;
+
+  if (!hasQuery && !statusFilter) {
     return [];
   }
 
-  const pattern = `%${trimmed}%`;
+  const conditions: string[] = ['depth > 0'];
+  const params: (string | number)[] = [];
+
+  if (hasQuery) {
+    const pattern = `%${trimmed}%`;
+    conditions.push(
+      '(title LIKE ? OR notes LIKE ? OR status LIKE ? OR tags LIKE ? OR metadata LIKE ?)'
+    );
+    params.push(pattern, pattern, pattern, pattern, pattern);
+  }
+
+  if (statusFilter) {
+    conditions.push('status = ?');
+    params.push(statusFilter);
+    if (!nodeTypeFilter) {
+      conditions.push("node_type = 'entry'");
+    }
+  }
+
+  if (nodeTypeFilter) {
+    conditions.push('node_type = ?');
+    params.push(nodeTypeFilter);
+  }
+
   const sqlQuery = `
     SELECT ${ALIASED_COLUMNS}
     FROM nodes
-    WHERE depth > 0
-      AND (
-        title LIKE ?
-        OR notes LIKE ?
-        OR status LIKE ?
-        OR tags LIKE ?
-      )
+    WHERE ${conditions.join(' AND ')}
     ORDER BY updated_at DESC
     LIMIT 50;
   `;
 
-  const rows = expoDb.getAllSync<RawNodeRow>(sqlQuery, [
-    pattern,
-    pattern,
-    pattern,
-    pattern,
-  ]);
+  const rows = expoDb.getAllSync<RawNodeRow>(sqlQuery, params);
 
   const results: SearchResult[] = [];
   for (const row of rows) {
