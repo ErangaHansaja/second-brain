@@ -69,10 +69,10 @@ export default function SettingsScreen() {
     }, [refreshRoot, refreshStats])
   );
 
-  const hasStarterGalaxies = (stats?.galaxies ?? 0) > 0;
+  const showStarterCard = stats !== null && stats.galaxies === 0;
 
   const handleSeedStarter = async () => {
-    if (seeding || hasStarterGalaxies) return;
+    if (seeding || !showStarterCard) return;
     try {
       setSeeding(true);
       setBanner(null);
@@ -234,19 +234,17 @@ export default function SettingsScreen() {
 
   return (
     <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <Text style={styles.headerSubtitle}>
-            Data, structure, and local backups
-          </Text>
-        </View>
+      {/* Fixed Top Header */}
+      <View style={styles.topHeader}>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerSubtitle}>
+          Data, structure, and local backups
+        </Text>
+      </View>
 
-        {/* Inline Feedback Banner */}
-        {banner || statsError ? (
+      {/* Pinned Inline Feedback Banner */}
+      {banner || statsError ? (
+        <View style={styles.bannerWrap}>
           <View
             style={[
               styles.banner,
@@ -295,8 +293,13 @@ export default function SettingsScreen() {
               </Pressable>
             ) : null}
           </View>
-        ) : null}
+        </View>
+      ) : null}
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         {/* Section 1 — Overview (Database Stats) */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
@@ -323,48 +326,38 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Section 2 — Starter Structure */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Starter Structure</Text>
-          <Text style={styles.sectionDescription}>
-            Populate top-level categories for Food, Entertainment, Work, Study,
-            and Hobbies.
-          </Text>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              hasStarterGalaxies && styles.actionButtonDisabled,
-              pressed && !hasStarterGalaxies && styles.pressed,
-            ]}
-            disabled={seeding || hasStarterGalaxies}
-            onPress={handleSeedStarter}>
-            {seeding ? (
-              <ActivityIndicator size="small" color={Colors.tier.core} />
-            ) : (
-              <Ionicons
-                name="sparkles-outline"
-                size={18}
-                color={
-                  hasStarterGalaxies ? Colors.text.muted : Colors.tier.core
-                }
-              />
-            )}
-            <Text
-              style={[
-                styles.actionButtonText,
-                hasStarterGalaxies && styles.actionButtonTextDisabled,
-              ]}>
-              {seeding ? 'Loading Categories...' : 'Load Starter Categories'}
+        {/* Section 2 — Starter Structure (hidden once galaxies exist) */}
+        {showStarterCard ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Starter Structure</Text>
+            <Text style={styles.sectionDescription}>
+              Populate top-level categories for Food, Entertainment, Work, Study,
+              and Hobbies.
             </Text>
-          </Pressable>
 
-          {hasStarterGalaxies ? (
-            <Text style={styles.helperText}>
-              Starter categories already present
-            </Text>
-          ) : null}
-        </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                seeding && styles.actionButtonDisabled,
+                pressed && !seeding && styles.pressed,
+              ]}
+              disabled={seeding}
+              onPress={handleSeedStarter}>
+              {seeding ? (
+                <ActivityIndicator size="small" color={Colors.tier.core} />
+              ) : (
+                <Ionicons
+                  name="sparkles-outline"
+                  size={18}
+                  color={Colors.tier.core}
+                />
+              )}
+              <Text style={styles.actionButtonText}>
+                {seeding ? 'Loading Categories...' : 'Load Starter Categories'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Section 3 — Local Backup */}
         <View style={styles.sectionCard}>
@@ -568,12 +561,13 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    padding: Spacing.lg,
-    paddingBottom: Spacing.xxl * 2,
-    gap: Spacing.lg,
-  },
-  header: {
+  topHeader: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm + 4,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border.subtle,
+    backgroundColor: Colors.bg.void,
     gap: 2,
   },
   headerTitle: {
@@ -584,6 +578,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: FontSize.sm,
     color: Colors.text.secondary,
+  },
+  bannerWrap: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm + 2,
+    paddingBottom: Spacing.xs,
+    backgroundColor: Colors.bg.void,
   },
   banner: {
     flexDirection: 'row',
@@ -629,6 +629,14 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
     color: Colors.semantic.success,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xxl * 2,
+    gap: Spacing.lg,
   },
   sectionCard: {
     backgroundColor: Colors.bg.surface,
@@ -718,14 +726,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,
     color: Colors.text.primary,
-  },
-  actionButtonTextDisabled: {
-    color: Colors.text.muted,
-  },
-  helperText: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.xs,
-    color: Colors.text.muted,
   },
   pressed: {
     opacity: 0.78,
