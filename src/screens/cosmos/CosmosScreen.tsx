@@ -37,7 +37,8 @@ type OutgoingWebViewCommand =
   | { type: 'ZOOM_IN' }
   | { type: 'ZOOM_OUT' }
   | { type: 'RESET_CAMERA' }
-  | { type: 'CLEAR_SELECTION' };
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'SET_ACTIVE'; active: boolean };
 
 interface IncomingWebViewMessage {
   type?: string;
@@ -50,6 +51,7 @@ export default function CosmosScreen() {
 
   const webViewRef = useRef<CosmosWebViewHandle | null>(null);
   const webViewReadyRef = useRef<boolean>(false);
+  const isFocusedRef = useRef<boolean>(true);
 
   const htmlSource = useMemo(() => ({ html: buildCosmosHtml() }), []);
   const graph = useMemo(() => buildCosmosGraphData(nodes), [nodes]);
@@ -74,14 +76,23 @@ export default function CosmosScreen() {
     }
   }, [graph.engineNodes, postCommand]);
 
-  // Refresh data and reset zoom/selection whenever returning to Cosmos tab
+  // Refresh data, resume WebGL loop, and reset camera on focus; pause GPU loop on blur
   useFocusEffect(
     useCallback(() => {
+      isFocusedRef.current = true;
       refresh();
       setSelectedNodeId(null);
       if (webViewReadyRef.current) {
+        postCommand({ type: 'SET_ACTIVE', active: true });
         postCommand({ type: 'RESET_CAMERA' });
       }
+
+      return () => {
+        isFocusedRef.current = false;
+        if (webViewReadyRef.current) {
+          postCommand({ type: 'SET_ACTIVE', active: false });
+        }
+      };
     }, [refresh, postCommand])
   );
 
@@ -112,6 +123,10 @@ export default function CosmosScreen() {
           postCommand({
             type: 'SET_DATA',
             nodes: latestEngineNodesRef.current,
+          });
+          postCommand({
+            type: 'SET_ACTIVE',
+            active: isFocusedRef.current,
           });
         } else if (parsed.type === 'SELECT_NODE' && parsed.nodeId) {
           hapticLight();
@@ -181,6 +196,7 @@ export default function CosmosScreen() {
             source={htmlSource}
             originWhitelist={['*']}
             javaScriptEnabled
+            domStorageEnabled
             scrollEnabled={false}
             bounces={false}
             overScrollMode="never"
