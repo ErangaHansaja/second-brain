@@ -21,6 +21,7 @@ import {
 import { deleteNode, updateNode } from '@/db/repository';
 import { useAncestors, useDescendantCount, useNode } from '@/hooks';
 import type { NodeStatus, ParsedNode, UpdateNodePatch } from '@/types';
+import { hapticSuccess, hapticWarning } from '@/utils/haptics';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -205,6 +206,7 @@ export default function NodeDetailScreen({
       }
 
       const updated = await updateNode(node.id, patch);
+      hapticSuccess();
       syncDraftFromNode(updated);
       setIsEditing(false);
       refreshNode();
@@ -315,7 +317,10 @@ export default function NodeDetailScreen({
                     styles.deleteIconBtn,
                     pressed && styles.deleteIconBtnPressed,
                   ]}
-                  onPress={() => setDeleteDialogVisible(true)}
+                  onPress={() => {
+                    hapticWarning();
+                    setDeleteDialogVisible(true);
+                  }}
                   accessibilityLabel="Delete item"
                   accessibilityRole="button">
                   <Ionicons

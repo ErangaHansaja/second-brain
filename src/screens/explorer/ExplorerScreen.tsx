@@ -26,6 +26,12 @@ import {
   useRootNode,
 } from '@/hooks';
 import type { ParsedNode } from '@/types';
+import {
+  hapticLight,
+  hapticMedium,
+  hapticSuccess,
+  hapticWarning,
+} from '@/utils/haptics';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -122,6 +128,21 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
     refresh: refreshAncestors,
   } = useAncestors(currentNodeId);
 
+  // Recover to root automatically if active node no longer resolves (e.g. backup restore or deletion)
+  useEffect(() => {
+    if (
+      !rootLoading &&
+      !nodeLoading &&
+      !nodeError &&
+      rootNode &&
+      currentNodeId &&
+      currentNode === null &&
+      currentNodeId !== rootNode.id
+    ) {
+      setCurrentNodeId(rootNode.id);
+    }
+  }, [rootLoading, nodeLoading, nodeError, rootNode, currentNodeId, currentNode]);
+
   const handleRefresh = useCallback(() => {
     refreshRoot();
     refreshNode();
@@ -165,6 +186,7 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
       setSeeding(true);
       setBanner(null);
       await seedStarterTemplates(rootNode.id);
+      hapticSuccess();
       handleRefresh();
       setBanner({ type: 'info', message: 'Starter categories loaded' });
     } catch (err) {
@@ -193,6 +215,7 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
   );
 
   const handleNodeLongPress = useCallback((node: ParsedNode) => {
+    hapticMedium();
     setSelectedNode(node);
     setActiveModal('actions');
   }, []);
@@ -261,6 +284,7 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
       const count =
         node.nodeType === 'folder' ? await getDescendantCount(node.id) : 0;
       setDeleteChildCount(count);
+      hapticWarning();
       setActiveModal('delete');
     } catch (err) {
       setActiveModal('none');
@@ -337,9 +361,10 @@ export default function ExplorerScreen({ initialNodeId }: ExplorerScreenProps) {
 
           <Pressable
             hitSlop={8}
-            onPress={() =>
-              setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'))
-            }
+            onPress={() => {
+              hapticLight();
+              setViewMode((prev) => (prev === 'list' ? 'grid' : 'list'));
+            }}
             style={({ pressed }) => [
               styles.iconButton,
               pressed && styles.iconButtonPressed,

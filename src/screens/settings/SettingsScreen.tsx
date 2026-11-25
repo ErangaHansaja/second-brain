@@ -22,12 +22,12 @@ import {
   importDatabase,
   seedStarterTemplates,
 } from '@/db/repository';
-import { runRepositorySelfTest, type SelfTestOutput } from '@/db/selfTest';
 import { useDatabaseStats, useRootNode } from '@/hooks';
 import {
   exportBackupToFile,
   pickAndParseBackupFile,
 } from '@/utils/backup';
+import { hapticSuccess, hapticWarning } from '@/utils/haptics';
 import type { ExportedDatabase } from '@/types';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -58,10 +58,6 @@ export default function SettingsScreen() {
   );
   const [banner, setBanner] = useState<FeedbackBanner | null>(null);
 
-  // __DEV__ diagnostics
-  const [testing, setTesting] = useState(false);
-  const [testOutput, setTestOutput] = useState<SelfTestOutput | null>(null);
-
   useFocusEffect(
     useCallback(() => {
       refreshRoot();
@@ -78,6 +74,7 @@ export default function SettingsScreen() {
       setBanner(null);
       const targetRoot = rootNode ?? (await ensureRootNode());
       await seedStarterTemplates(targetRoot.id);
+      hapticSuccess();
       refreshRoot();
       refreshStats();
       setBanner({
@@ -103,6 +100,7 @@ export default function SettingsScreen() {
       setExporting(true);
       setBanner(null);
       const { filename, nodeCount } = await exportBackupToFile();
+      hapticSuccess();
       setBanner({
         type: 'success',
         message: `Exported ${nodeCount} ${
@@ -127,6 +125,7 @@ export default function SettingsScreen() {
       setBanner(null);
       const parsed = await pickAndParseBackupFile();
       if (parsed) {
+        hapticWarning();
         setPendingBackup(parsed);
       }
     } catch (err) {
@@ -148,6 +147,7 @@ export default function SettingsScreen() {
     try {
       setImporting(true);
       await importDatabase(backupToImport);
+      hapticSuccess();
       const restoredRoot = await ensureRootNode();
       setPendingBackup(null);
       refreshRoot();
@@ -174,28 +174,6 @@ export default function SettingsScreen() {
       });
     } finally {
       setImporting(false);
-    }
-  };
-
-  const handleRunSelfTest = async () => {
-    setTesting(true);
-    try {
-      const output = await runRepositorySelfTest();
-      setTestOutput(output);
-      refreshStats();
-    } catch (err: unknown) {
-      setTestOutput({
-        passed: false,
-        results: [
-          {
-            name: 'Execution Error',
-            passed: false,
-            detail: err instanceof Error ? err.message : String(err),
-          },
-        ],
-      });
-    } finally {
-      setTesting(false);
     }
   };
 
@@ -419,125 +397,10 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Section 4 — Developer Tools (__DEV__ only) */}
-        {__DEV__ && (
-          <View style={[styles.sectionCard, styles.devCard]}>
-            <View style={styles.devHeader}>
-              <Ionicons
-                name="construct-outline"
-                size={15}
-                color={Colors.tier.core}
-              />
-              <Text style={styles.devTitle}>Developer Tools</Text>
-            </View>
-
-            <View style={styles.buttonGroup}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.devButton,
-                  pressed && styles.pressed,
-                  testing && styles.actionButtonDisabled,
-                ]}
-                onPress={handleRunSelfTest}
-                disabled={testing}>
-                {testing ? (
-                  <ActivityIndicator size="small" color={Colors.tier.core} />
-                ) : (
-                  <Ionicons
-                    name="play-outline"
-                    size={16}
-                    color={Colors.tier.core}
-                  />
-                )}
-                <Text style={styles.devButtonText}>
-                  {testing ? 'Running DB Verification...' : 'Run DB Self-Test'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.devButton,
-                  styles.devButtonSubtle,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => router.push('/dev-gallery' as any)}>
-                <Ionicons
-                  name="images-outline"
-                  size={16}
-                  color={Colors.tier.core}
-                />
-                <Text style={styles.devButtonText}>
-                  Open UI Component Gallery
-                </Text>
-              </Pressable>
-            </View>
-
-            {testOutput && (
-              <View style={styles.resultsContainer}>
-                <View style={styles.summaryRow}>
-                  <Ionicons
-                    name={
-                      testOutput.passed ? 'checkmark-circle' : 'alert-circle'
-                    }
-                    size={18}
-                    color={
-                      testOutput.passed
-                        ? Colors.semantic.success
-                        : Colors.semantic.danger
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.summaryText,
-                      {
-                        color: testOutput.passed
-                          ? Colors.semantic.success
-                          : Colors.semantic.danger,
-                      },
-                    ]}>
-                    {testOutput.passed
-                      ? 'All 8 Checks Passed'
-                      : 'Verification Failures Detected'}
-                  </Text>
-                </View>
-
-                {testOutput.results.map((r, i) => (
-                  <View key={i} style={styles.resultItem}>
-                    <View style={styles.resultRow}>
-                      <Ionicons
-                        name={
-                          r.passed
-                            ? 'checkmark-circle-outline'
-                            : 'close-circle-outline'
-                        }
-                        size={14}
-                        color={
-                          r.passed
-                            ? Colors.semantic.success
-                            : Colors.semantic.danger
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.resultName,
-                          {
-                            color: r.passed
-                              ? Colors.text.primary
-                              : Colors.semantic.danger,
-                          },
-                        ]}>
-                        {r.name}
-                      </Text>
-                    </View>
-                    {r.detail && (
-                      <Text style={styles.resultDetail}>{r.detail}</Text>
-                    )}
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
+        {/* Subtle App Footer */}
+        <View style={styles.footerWrap}>
+          <Text style={styles.footerText}>Second Brain · v1.0.0</Text>
+        </View>
       </ScrollView>
 
       {/* Import Confirmation Dialog */}
@@ -730,83 +593,14 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.78,
   },
-  devCard: {
-    borderColor: 'rgba(245, 166, 35, 0.25)',
-  },
-  devHeader: {
-    flexDirection: 'row',
+  footerWrap: {
     alignItems: 'center',
-    gap: Spacing.xs,
+    paddingTop: Spacing.xs,
   },
-  devTitle: {
+  footerText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.tier.core,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  devButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.bg.elevated,
-    borderWidth: 1,
-    borderColor: Colors.border.active,
-    borderRadius: Radius.sm,
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
-  },
-  devButtonSubtle: {
-    borderColor: Colors.border.subtle,
-  },
-  devButtonText: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    color: Colors.text.primary,
-  },
-  resultsContainer: {
-    marginTop: Spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border.subtle,
-    paddingTop: Spacing.md,
-    gap: Spacing.sm,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.xs,
-  },
-  summaryText: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-  },
-  resultItem: {
-    backgroundColor: Colors.bg.void,
-    borderColor: Colors.border.subtle,
-    borderWidth: 1,
-    borderRadius: Radius.sm,
-    padding: Spacing.sm,
-    gap: 2,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  resultName: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
-  },
-  resultDetail: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.xs - 1,
-    color: Colors.text.secondary,
-    marginLeft: 18,
+    color: Colors.text.muted,
+    textAlign: 'center',
   },
 });

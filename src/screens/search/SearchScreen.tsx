@@ -22,6 +22,7 @@ import {
 import { STATUS_LIST } from '@/constants/statuses';
 import { useSearch } from '@/hooks';
 import type { NodeType, SearchResult } from '@/types';
+import { hapticLight } from '@/utils/haptics';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { EmptyState } from '@/components/common/EmptyState';
 import { SearchResultCard } from '@/components/search/SearchResultCard';
@@ -81,11 +82,13 @@ export default function SearchScreen() {
   }, [clearQuery]);
 
   const handleSelectAll = () => {
+    hapticLight();
     setNodeTypeFilter(undefined);
     setStatusFilter(undefined);
   };
 
   const handleToggleType = (type: NodeType) => {
+    hapticLight();
     if (nodeTypeFilter === type && !statusFilter) {
       setNodeTypeFilter(undefined);
     } else {
@@ -95,6 +98,7 @@ export default function SearchScreen() {
   };
 
   const handleToggleStatus = (statusVal: string) => {
+    hapticLight();
     if (statusFilter === statusVal) {
       setStatusFilter(undefined);
     } else {
