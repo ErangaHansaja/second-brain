@@ -28,6 +28,7 @@ import {
   exportBackupToFile,
   pickAndParseBackupFile,
 } from '@/utils/backup';
+import { hapticSuccess, hapticWarning } from '@/utils/haptics';
 import type { ExportedDatabase } from '@/types';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -78,6 +79,7 @@ export default function SettingsScreen() {
       setBanner(null);
       const targetRoot = rootNode ?? (await ensureRootNode());
       await seedStarterTemplates(targetRoot.id);
+      hapticSuccess();
       refreshRoot();
       refreshStats();
       setBanner({
@@ -103,6 +105,7 @@ export default function SettingsScreen() {
       setExporting(true);
       setBanner(null);
       const { filename, nodeCount } = await exportBackupToFile();
+      hapticSuccess();
       setBanner({
         type: 'success',
         message: `Exported ${nodeCount} ${
@@ -127,6 +130,7 @@ export default function SettingsScreen() {
       setBanner(null);
       const parsed = await pickAndParseBackupFile();
       if (parsed) {
+        hapticWarning();
         setPendingBackup(parsed);
       }
     } catch (err) {
@@ -148,6 +152,7 @@ export default function SettingsScreen() {
     try {
       setImporting(true);
       await importDatabase(backupToImport);
+      hapticSuccess();
       const restoredRoot = await ensureRootNode();
       setPendingBackup(null);
       refreshRoot();

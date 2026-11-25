@@ -23,6 +23,7 @@ import {
 } from '@/theme/tokens';
 import type { NodeType, ParsedNode } from '@/types';
 import { createNode } from '@/db/repository';
+import { hapticMedium } from '@/utils/haptics';
 import { TextInputField } from '../common/TextInputField';
 
 export interface AddNodeFABProps {
@@ -104,6 +105,7 @@ export function AddNodeFAB({
         color: tierColor(targetDepth),
       });
 
+      hapticMedium();
       resetForm();
       setModalVisible(false);
       onCreated(newNode);

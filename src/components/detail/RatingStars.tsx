@@ -15,6 +15,7 @@ import {
   Radius,
   Spacing,
 } from '@/theme/tokens';
+import { hapticLight } from '@/utils/haptics';
 
 export interface RatingStarsProps {
   rating: number | null;
@@ -43,7 +44,11 @@ export function RatingStars({
               key={score}
               disabled={readonly}
               hitSlop={6}
-              onPress={() => onRate?.(score)}
+              onPress={() => {
+                if (readonly || !onRate) return;
+                hapticLight();
+                onRate(score);
+              }}
               style={({ pressed }) => [
                 styles.dotTouch,
                 pressed && !readonly && styles.dotPressed,
