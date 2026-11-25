@@ -1,4 +1,5 @@
 import { File, Paths } from 'expo-file-system';
+import { readAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { exportDatabase } from '@/db/repository';
@@ -41,6 +42,75 @@ function isValidNodeRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function safeTransformUri(
+  uri: string,
+  transform: (u: string) => string
+): string {
+  try {
+    return transform(uri);
+  } catch {
+    return uri;
+  }
+}
+
+/**
+ * Reads a backup URI into a UTF-8 string using a 3-stage fallback chain
+ * to handle Android content:// URIs, cached files, and special characters like ().
+ */
+async function readBackupUriAsText(uri: string): Promise<string> {
+  const errors: string[] = [];
+  const uriCandidates = Array.from(
+    new Set([
+      uri,
+      safeTransformUri(uri, encodeURI),
+      safeTransformUri(uri, decodeURI),
+    ])
+  );
+
+  // Attempt 1: Modern SDK 58 File.text()
+  for (const candidate of uriCandidates) {
+    try {
+      const pickedFile = new File(candidate);
+      return await pickedFile.text();
+    } catch (err) {
+      errors.push(
+        `File.text(${candidate}): ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+  }
+
+  // Attempt 2: Legacy expo-file-system readAsStringAsync
+  for (const candidate of uriCandidates) {
+    try {
+      return await readAsStringAsync(candidate, { encoding: 'utf8' });
+    } catch (err) {
+      errors.push(
+        `readAsStringAsync: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+  }
+
+  // Attempt 3: Native fetch fallback
+  try {
+    const response = await fetch(uri);
+    if (response.status >= 400) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.text();
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    errors.push(`fetch: ${detail}`);
+    if (__DEV__) {
+      console.warn('[Backup] Import failed:', errors.join(' | '));
+    }
+    throw new Error(`Could not read the selected backup file (${detail}).`);
+  }
+}
+
 /**
  * Opens the system document picker to select a backup JSON file, reads it as UTF-8,
  * and strictly validates structure and hierarchy invariants before returning.
@@ -66,22 +136,33 @@ export async function pickAndParseBackupFile(): Promise<ExportedDatabase | null>
   }
 
   let rawText: string;
-  try {
-    if (asset.file && typeof asset.file.text === 'function') {
+  if (asset.file && typeof asset.file.text === 'function') {
+    try {
       rawText = await asset.file.text();
-    } else {
-      const pickedFile = new File(asset.uri);
-      rawText = await pickedFile.text();
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[Backup] Import failed:', err);
+      }
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`Could not read the selected backup file (${detail}).`);
     }
-  } catch {
-    throw new Error('Could not read the selected backup file.');
+  } else {
+    rawText = await readBackupUriAsText(asset.uri);
   }
+
+  const cleanText = rawText.replace(/^\uFEFF/, '');
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    throw new Error('Selected file does not contain valid JSON.');
+    parsed = JSON.parse(cleanText);
+  } catch (err) {
+    if (__DEV__) {
+      console.warn('[Backup] Import failed:', err);
+    }
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Selected file does not contain valid JSON (${detail}).`
+    );
   }
 
   if (!isValidNodeRecord(parsed) || parsed.version !== 1) {
