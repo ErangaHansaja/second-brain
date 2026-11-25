@@ -134,9 +134,9 @@ second-brain/
     │
     ├── screens/                           # Real feature screen implementations
     │   ├── cosmos/
+    │   │   ├── cosmosEngineHtml.ts        # Offline 3D Canvas Black Hole & Galaxy WebView HTML generator
     │   │   ├── CosmosInspectorCard.tsx    # Floating inspector card for tapped Cosmos bodies
-    │   │   ├── CosmosLabel.tsx            # UI-thread screen-space label anchored below node circle
-    │   │   └── CosmosScreen.tsx           # Interactive pinch/pan/tap Obsidian Cosmos galaxy canvas
+    │   │   └── CosmosScreen.tsx           # 3D WebView Cosmos wrapper, native HUD & focus auto-reset
     │   ├── explorer/
     │   │   ├── ExplorerNodeItem.tsx       # Wrapper calling useDescendantCount per folder card
     │   │   ├── ExplorerScreen.tsx         # Full drill-down Explorer with CRUD modals & auto-open new entries
@@ -158,7 +158,7 @@ second-brain/
     │
     └── utils/
         ├── backup.ts                      # SDK 58 File/Paths JSON export & validated DocumentPicker import
-        ├── cosmosLayout.ts                # Deterministic orbital layout engine & world-space hit-testing
+        ├── cosmosLayout.ts                # O(N) descendant counts, color resolution & 3D engine payload builder
         └── haptics.ts                     # Safe Platform/try-catch wrappers around expo-haptics
 ```
 
@@ -176,10 +176,11 @@ second-brain/
   - `expo-sharing`: `~58.0.23` (Native share sheet for backup exports)
   - `expo-status-bar`: `~58.0.5` (Root light-content status bar configuration)
   - `@expo/vector-icons`: `^15.0.2` (Standardized vector glyphs: Ionicons)
-  - `react-native-gesture-handler`: `~3.3.0` (Native pan, pinch, and tap gesture engine)
-  - `react-native-reanimated`: `4.7.1` (UI-thread animations and SVG prop driving)
+  - `react-native-gesture-handler`: `~3.3.0` (Root gesture view & navigation gestures)
+  - `react-native-reanimated`: `4.7.1` (Worklet animations & navigation)
   - `react-native-safe-area-context`: `~5.11.1` (Safe status bar and device insets)
-  - `react-native-svg`: `15.16.0` (Crisp vector Cosmos orbits, black hole glow, and celestial bodies)
+  - `react-native-svg`: `15.16.0` (Vector graphics module)
+  - `react-native-webview`: `14.0.1` (Hardware-accelerated offline 3D Canvas host for Cosmos view)
   - `react-native-worklets`: `0.13.0` (Worklet runtime bundled via `babel-preset-expo`)
 - **Database ORM & Tooling:**
   - `drizzle-orm`: `^0.45.4` (Type-safe SQL query builder + Expo SQLite migrator)
@@ -227,15 +228,15 @@ second-brain/
    - **Safe Tactile Haptics (`src/utils/haptics.ts`):** `hapticLight()`, `hapticMedium()`, `hapticSuccess()`, and `hapticWarning()` guard against `Platform.OS === 'web'` and catch rejected promises/unavailable hardware quietly across rating dots, Search filter pills, view mode toggles, long-press actions, node creation, saves, backups, and destructive confirmations.
    - **Settled Node Lookup & Post-Restore Recovery (`useNode` + `ExplorerScreen`):** `useNode` tracks `settledId` so transitioning node IDs report `loading: true` without 1-frame stale null races, enabling `ExplorerScreen` to recover back to `rootNode.id` automatically whenever `!rootLoading && !nodeLoading && currentNode === null`.
    - **Dark Boot & Production Cleanup (`app.json`, `_layout.tsx`, `SettingsScreen.tsx`):** `app.json` locks `userInterfaceStyle: "dark"` with `#04050A` root/splash/adaptiveIcon background colors, root `_layout.tsx` wraps `<Stack>` in an Obsidian `DarkTheme` (`ThemeProvider`) + `#04050A` view + `<StatusBar style="light" />`, `(tabs)/_layout.tsx` sets `sceneStyle: { backgroundColor: '#04050A' }`, temporary dev scaffolding (`src/app/dev-gallery.tsx`, `src/screens/dev/ComponentGalleryScreen.tsx`, `src/db/selfTest.ts`) and Settings' Developer Tools section were removed, and Settings now renders a subtle `Second Brain · v1.0.0` footer.
-9. **Phase 2 Interactive Obsidian Cosmos View (Step 13 Delivered):**
-   - **Gesture Root & Whole-Universe Query (`_layout.tsx`, `getAllNodes`, `useAllNodes`):** Wrapped the app root in `<GestureHandlerRootView>` with `#04050A` background, added `getAllNodes()` ordered by `depth ASC, title COLLATE NOCASE ASC`, and implemented race-safe `useAllNodes()` refreshed on tab focus.
-   - **Deterministic Orbital Layout & Hit-Testing (`src/utils/cosmosLayout.ts`):** Computes O(N) descendant masses, places Root `"Me"` at `(0, 0)` (`r = 26`), distributes Depth 1 Galaxies on `r = 185` (expanding cleanly past 6 galaxies) sized `14–22` by mass, fans Depth 2 Solar Systems outward (`localR = 72–90`), nests Depth 3+ satellites (`localR = 36–46`) with rating-scaled (`6–10`) and status-colored entries, and resolves taps via `findNodeAtWorldPoint()` (`Math.max(radius + 14 / scale, 22 / scale)`).
-   - **60 FPS SVG Matrix Camera & LOD Labels (`CosmosScreen.tsx`, `CosmosLabel.tsx`, `CosmosInspectorCard.tsx`):** Drives pan (`changeX/Y`), focal-point pinch (`scaleChange` clamped `[0.35, 4.0]`), double-tap zoom, and tap centering directly on an `<AnimatedG>` native SVG `matrix` (`[s, 0, 0, s, cx + tx, cy + ty]`), anchors crisp screen-space `CosmosLabel` overlays keyed by coarse zoom thresholds (`0.8` and `1.35` via `useAnimatedReaction` + `scheduleOnRN`), renders an animated amber Event Horizon black hole (`<RadialGradient>` + breathing halo), and opens a compact floating `CosmosInspectorCard` jumping straight to Detail or Explorer.
+9. **Phase 2 Interactive 3D Obsidian Cosmos View (Step 13 Delivered):**
+   - **Gesture Root & Whole-Universe Query (`_layout.tsx`, `getAllNodes`, `useAllNodes`, `cosmosLayout.ts`):** Wrapped the app root in `<GestureHandlerRootView>` with `#04050A` background, added `getAllNodes()` ordered by `depth ASC, title COLLATE NOCASE ASC`, added race-safe `useAllNodes()`, and shared O(N) descendant mass + status-color payload formatting via `buildCosmosGraphData()`.
+   - **Offline 3D Canvas Black Hole & Tilted Galaxies (`src/screens/cosmos/cosmosEngineHtml.ts`):** Self-contained, zero-CDN HTML5 Canvas 3D engine scaled by `devicePixelRatio` featuring 290+ twinkling 3D parallax stars, 4 subtle parallax nebula clouds, a `"Me"` central singularity occluded against 340+ Keplerian accretion-disk particles (`globalCompositeOperation = 'lighter'`), generously spaced tilted 3D galaxy/system/planet orbits with gentle drift (pausing during drags/selection), and luminous parent-child energy filaments.
+   - **Camera Gestures, Constellation Dimming, Collision-Free Labels & Focus Auto-Reset (`CosmosScreen.tsx` + `CosmosInspectorCard.tsx`):** Supports 1-finger 3D orbital rotation with inertia, 2-finger pinch-zoom (`0.45x`–`3.6x`) + pan, tap fly-in focusing that dims unrelated branches to ~20% while keeping parent/child constellation paths crisp, priority-sorted collision-free 2D labels, double-tap reset, bidirectional `READY` / `SET_DATA` / `RESET_CAMERA` bridge, automatic camera/selection reset on `useFocusEffect` tab return, and native obsidian HUD + `CosmosInspectorCard`.
 
 ---
 
 ## 5. Next Immediate Step
 
 **Verify & Merge Step 13 (`feat/step-13-cosmos-view`)**:
-- Test Cosmos gestures, orbital layout, zoom LOD labels, and node navigation on-device in Expo Go using [docs/walkthroughs/step-13.md](docs/walkthroughs/step-13.md).
-- Merge PR #12 into `dev` on GitHub once manual QA passes.
+- Test the 3D WebView Cosmos view, black hole accretion animation, focus dimming, collision-free labels, and focus camera reset in Expo Go using [docs/walkthroughs/step-13.md](docs/walkthroughs/step-13.md).
+- Merge PR #13 into `dev` on GitHub once manual QA passes.

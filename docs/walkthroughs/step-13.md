@@ -1,38 +1,37 @@
-# Walkthrough — Step 13: Interactive Obsidian Cosmos View
+# Walkthrough — Step 13: Interactive 3D Obsidian Cosmos View
 
 > **Branch:** `feat/step-13-cosmos-view`  
 > **Base:** `dev` (at `e4ba5b4` — Phase 1 / Step 12 merged)  
-> **Status:** Completed & Typechecked (PR #12 Ready for Expo Go QA)  
+> **Status:** Completed & Typechecked (PR #13 Updated with 3D WebView Engine)  
 
 ---
 
 ## 1. Overview & Architecture
 
-Step 13 launches **Phase 2: The Obsidian Cosmos View**, adding an interactive pinch-to-zoom 2D galaxy constellation map backed live by SQLite (`expo-sqlite`) and running smoothly on Android/iOS in Expo Go:
+Step 13 delivers **Phase 2: The Obsidian Cosmos View**, replacing the initial flat 2D SVG map with a **100% offline, hardware-accelerated 3D Canvas Galaxy & Black Hole engine** inside `react-native-webview`, paired with native Obsidian HUD overlays and Inspector Card:
 
-1. **Dependencies & Gesture Root (`package.json`, `src/app/_layout.tsx`):**
-   - Installed `react-native-svg` (`15.16.0`) via `npx expo install react-native-svg` alongside `react-native-reanimated` (`4.7.1`), `react-native-gesture-handler` (`~3.3.0`), and `react-native-worklets` (`0.13.0`).
-   - Verified `babel-preset-expo` in Expo SDK 58 automatically resolves `react-native-worklets/plugin`, keeping `babel.config.js` conflict-free.
-   - Wrapped the root app container in `<GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg.void }}>`.
-2. **Whole-Universe Data Loader (`src/db/repository.ts`, `src/hooks/useAllNodes.ts`):**
-   - Added `getAllNodes(): Promise<ParsedNode[]>` ordered by `depth ASC, title COLLATE NOCASE ASC`.
-   - Added `useAllNodes()` with a cancellation guard (`cancelled`) and memoized `refresh()`, re-exported via `src/hooks/index.ts`.
-3. **Orbital Layout Math & World-Space Hit-Testing (`src/utils/cosmosLayout.ts`):**
-   - **Mass Calculation (O(N)):** Computes subtree `descendantCount` per node using a cycle-guarded DFS cache so folder radii scale proportionally with subtree size.
-   - **Depth 0 (Root `"Me"`):** Anchored at `(0, 0)` with `radius: 26` and Event Horizon amber `#F5A623`.
-   - **Depth 1 (Galaxies):** Placed evenly around `(0, 0)` starting at `-π/2` along a primary ring (`r = 185`, expanding smoothly by `+20px` per galaxy past 6), `radius` scaled between `14` and `22`.
-   - **Depth 2 (Solar Systems):** Fanned radially outward along their parent Galaxy's angle (`localR = 72–90` scaled with sibling count, `fanSpan <= 1.25π`), `radius` scaled `10–13` for folders.
-   - **Depth 3+ (Planets, Entries, Moons):** Nested in tight outward arcs around their parent (`localR = 36–46`, `fanSpan <= 1.65π`). Entry radii map ratings `1–10` across `6–10px` (`7.5px` when unrated) and inherit status colors from `STATUS_PRESETS`, falling back to `tierColor(depth)`.
-   - **Deterministic Tap Hit-Testing:** `findNodeAtWorldPoint(items, worldX, worldY, scale)` converts screen coordinates `(sx, sy)` into world space (`(sx - cx - tx) / scale`, `(sy - cy - ty) / scale`) and selects the closest body within `Math.max(item.radius + 14 / safeScale, 22 / safeScale)`.
-4. **60 FPS Gesture Camera, LOD Labels & Inspector (`CosmosScreen.tsx`, `CosmosLabel.tsx`, `CosmosInspectorCard.tsx`):**
-   - **SVG Matrix Camera:** Rather than scaling a huge `View` bitmap (which risks Android GPU texture limits when zoomed), `<Svg>` fills the exact viewport and animates a single `<AnimatedG>` native `matrix` (`[s, 0, 0, s, cx + tx, cy + ty]`) on the UI thread via `useAnimatedProps`.
-   - **Simultaneous Gestures:** Uses RNGH v3 hooks (`usePanGesture` incremental `changeX/changeY`, `usePinchGesture` focal-point `scaleChange` clamped `[0.35, 4.0]`, and `useExclusiveGestures(doubleTap, singleTap)` with `scheduleOnRN` from `react-native-worklets`).
-   - **Coarse Zoom LOD:** `useAnimatedReaction` dispatches `setZoomTier` via `scheduleOnRN` only when crossing thresholds `0.8` and `1.35`:
-     - Always visible: Depth `0` & `1`, plus any selected node and its direct children.
-     - Visible at `scale >= 0.8`: Depth `2` (Solar Systems).
-     - Visible at `scale >= 1.35`: Depth `3+` (Planets, Entries, Moons).
-   - **Event Horizon Visuals:** Deterministic static starfield (68 stars), dashed hairline orbital rings, glowing parent-child edges, and a central `"Me"` black hole featuring a `<RadialGradient>` amber corona, animated breathing outer ring, accretion rim, and `#04050A` void core.
-   - **HUD & Floating Inspector Card:** Top `"Cosmos"` pill + live body counter, bottom-right zoom controls (`+`, `-`, recenter on `"Me"`) stacked dynamically above `CosmosInspectorCard`, with `"Open Entry"` (`/node/${id}`) or `"Open in Explorer"` (`/(tabs)?nodeId=${id}`) actions.
+1. **Offline 3D Black Hole & Galaxy Engine (`src/screens/cosmos/cosmosEngineHtml.ts`):**
+   - **Zero-CDN High-DPI 3D Canvas:** Runs an internal `requestAnimationFrame` loop scaled by `Math.min(window.devicePixelRatio, 3)` inside `#04050A` void space with perspective projection, 3D yaw/pitch/zoom/pan camera interpolation, and back-to-front Z-sorting.
+   - **3D Starfield & Parallax Nebula:** Renders 290+ twinkling 3D sphere stars plus 4 deep-indigo, stellar-sky, and amber nebula clouds with cached radial glow textures (`globalCompositeOperation = 'lighter'`).
+   - **Living `"Me"` Black Hole Core:** Central pitch-black singularity sphere occluded cleanly against 340+ Keplerian amber/gold/white-hot accretion disk particles (inner particles orbit faster; back-half renders behind the event horizon, front-half crosses in front).
+   - **Tilted 3D Orbital Systems:**
+     - Galaxies (depth 1) drift gently on wide inclined 3D orbital planes (`r = 215–254`).
+     - Solar Systems (depth 2) fan along wide outward tilted local arcs (`r = 88–108`); Entries/Planets (depth 3+) nest cleanly (`r = 48–66`) with guaranteed angular spacing so sibling labels and bodies don't crowd.
+     - Tapered parent-child energy filaments connect the hierarchy; entry colors map directly from `STATUS_PRESETS`, with glow/radius scaled by rating (`1–10`) and folder `descendantCount`.
+   - **Obsidian Graph Focus & Collision-Free Labels:**
+     - Tapping a body flies the 3D camera smoothly onto it, dims unrelated branches smoothly to ~20% opacity while highlighting the selected node's ancestor path and direct children, and posts `{ type: 'SELECT_NODE', nodeId }` to React Native.
+     - Priority-sorted 2D bounding-box collision detection checks both placed labels and higher-priority node circles so labels never overlap each other or sit directly over another body.
+   - **Mobile Multi-Touch & Bidirectional Bridge:**
+     - Handles 1-finger 3D trackball rotation with inertia, 2-finger pinch-zoom (`0.45x`–`3.6x`) + screen pan, single-tap node selection, void tap clear, and double-tap reset (`touch-action: none`).
+     - Listens on both `window` and `document` for `SET_DATA`, `ZOOM_IN`, `ZOOM_OUT`, `RESET_CAMERA`, and `CLEAR_SELECTION` after posting `READY`.
+2. **Whole-Universe Data & Shared Payload Prep (`repository.ts`, `useAllNodes.ts`, `cosmosLayout.ts`):**
+   - `getAllNodes()` loads all nodes sorted `depth ASC, title COLLATE NOCASE ASC`.
+   - `useAllNodes()` wraps `getAllNodes()` safely with a cancellation flag and `refresh()`.
+   - `buildCosmosGraphData()` in `src/utils/cosmosLayout.ts` computes O(N) descendant counts and status/tier colors shared across the WebView payload and `CosmosInspectorCard`.
+3. **Native Overlays & Focus Camera Auto-Reset (`CosmosScreen.tsx`, `CosmosInspectorCard.tsx`):**
+   - Mounts `<WebView>` with `originWhitelist={['*']}`, `scrollEnabled={false}`, `bounces={false}`, `overScrollMode="never"`, `androidLayerType="hardware"`, `setBuiltInZoomControls={false}`, `setDisplayZoomControls={false}`, and `#04050A` `style` / `containerStyle` for zero white flashes.
+   - On `useFocusEffect` tab return, refreshes `useAllNodes()`, clears `selectedNodeId`, and posts `RESET_CAMERA` so returning from Detail/Explorer/Search/Settings always reopens centered cleanly on `"Me"`.
+   - Keeps native Obsidian top HUD (`Cosmos` + live body counter), `+` / `-` / Recenter circular controls, and bottom `CosmosInspectorCard` (`Open Entry` / `Open in Explorer`).
 
 ---
 
@@ -40,20 +39,20 @@ Step 13 launches **Phase 2: The Obsidian Cosmos View**, adding an interactive pi
 
 ### Files Created
 - `src/hooks/useAllNodes.ts` — Race-safe whole-universe loader hook.
-- `src/utils/cosmosLayout.ts` — Deterministic orbital placement & world-space tap hit-testing engine.
+- `src/utils/cosmosLayout.ts` — O(N) descendant mass calculation, status/tier color resolution, and 3D payload builder.
 - `src/app/(tabs)/cosmos.tsx` — Thin Expo Router wrapper for the `Cosmos` tab.
-- `src/screens/cosmos/CosmosScreen.tsx` — Interactive pan/pinch/tap SVG universe screen.
-- `src/screens/cosmos/CosmosLabel.tsx` — UI-thread screen-space label anchored under celestial bodies.
+- `src/screens/cosmos/cosmosEngineHtml.ts` — Self-contained offline 3D Canvas Black Hole & Galaxy WebView HTML engine.
+- `src/screens/cosmos/CosmosScreen.tsx` — 3D WebView host, bridge, HUD controls, and focus auto-reset.
 - `src/screens/cosmos/CosmosInspectorCard.tsx` — Floating inspector summary card with deep navigation actions.
 - `docs/walkthroughs/step-13.md` — This walkthrough report.
 
 ### Files Modified
-- `package.json` & `package-lock.json` — Added `react-native-svg` (`15.16.0`).
-- `src/app/_layout.tsx` — Replaced root `View` with `<GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg.void }}>`.
-- `src/app/(tabs)/_layout.tsx` — Added the `Cosmos` tab (`aperture` / `aperture-outline`) next to `Explorer`.
+- `package.json` & `package-lock.json` — Installed `react-native-svg` (`15.16.0`) and `react-native-webview` (`14.0.1`).
+- `src/app/_layout.tsx` — Wrapped app root in `<GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg.void }}>`.
+- `src/app/(tabs)/_layout.tsx` — Added the 4th `Cosmos` tab (`aperture` / `aperture-outline`) next to `Explorer`.
 - `src/db/repository.ts` — Exported `getAllNodes()`.
 - `src/hooks/index.ts` — Exported `useAllNodes`.
-- `PROJECT_STATE.md` — Marked Step 12 merged and Step 13 complete.
+- `PROJECT_STATE.md` — Marked Step 12 merged and Step 13 complete with 3D WebView engine architecture.
 
 ---
 
@@ -63,9 +62,13 @@ Step 13 launches **Phase 2: The Obsidian Cosmos View**, adding an interactive pi
 |:---|:---|:---|
 | `29345b5` | `chore(deps): configure svg, reanimated, and gesture-handler root for Cosmos view` | `react-native-svg` & `GestureHandlerRootView` root |
 | `c2558d8` | `feat(data): add getAllNodes repository query and reactive useAllNodes hook` | `getAllNodes()` & `useAllNodes` hook |
-| `2b920b3` | `feat(cosmos): add deterministic orbital layout engine and world-space hit-testing` | `src/utils/cosmosLayout.ts` |
-| `b834da2` | `feat(screen): implement interactive pinch-to-zoom Cosmos galaxy screen and tab` | `CosmosScreen`, `CosmosLabel`, `CosmosInspectorCard`, `cosmos` tab |
-| *(pending)* | `docs: update PROJECT_STATE.md and add step-13 walkthrough` | `PROJECT_STATE.md` & `docs/walkthroughs/step-13.md` |
+| `2b920b3` | `feat(cosmos): add deterministic orbital layout engine and world-space hit-testing` | Initial layout helpers |
+| `b834da2` | `feat(screen): implement interactive pinch-to-zoom Cosmos galaxy screen and tab` | Initial `cosmos` tab & inspector card |
+| `d2f8832` | `docs: update PROJECT_STATE.md and add step-13 walkthrough` | Initial Step 13 docs |
+| `eaf41ef` | `chore(deps): add react-native-webview for GPU-accelerated 3D Cosmos engine` | `react-native-webview` (`14.0.1`) |
+| `1f2f9e7` | `feat(cosmos): build offline GPU-accelerated 3D Black Hole and Galaxy canvas engine` | `src/screens/cosmos/cosmosEngineHtml.ts` |
+| `c0f2463` | `feat(screen): connect CosmosScreen to 3D WebView engine with focus camera auto-reset` | WebView wiring, cleaned `cosmosLayout.ts`, focus reset |
+| *(pending)* | `docs: update PROJECT_STATE and step-13 walkthrough for 3D Cosmos engine` | Updated Step 13 docs |
 
 ---
 
@@ -78,16 +81,14 @@ npx tsc --noEmit
 *Result:* Passed with **0 errors**.
 
 ### Manual Expo Go QA Steps
-1. **Tab Navigation & Boot:** Launch `npx expo start` in Expo Go and tap the **Cosmos** tab (`aperture` icon next to Explorer). Confirm the void `#04050A` canvas renders with the central amber breathing `"Me"` black hole, starfield, and orbiting categories.
-2. **Pan, Pinch & Controls:**
-   - Drag with one finger -> smooth 60 FPS panning across the constellation.
-   - Pinch with two fingers (and pan simultaneously while pinching) -> smooth zoom clamped between `0.35x` and `4.0x` anchored at your pinch center.
-   - Tap `+`, `-`, and the amber target recenter button -> smooth animated zoom steps and spring recenter back to `"Me"`.
-   - Double-tap an outer galaxy -> springs smoothly into a `2.0x` zoom centered on that region; double-tap again -> springs back to `1.0x` centered on `"Me"`.
-3. **Zoom LOD & Selection:**
-   - Zoom out (`< 0.8x`) -> confirm only Depth 0 (`Me`) and Depth 1 (Galaxies) labels remain visible cleanly.
-   - Zoom back to `1.0x` -> Depth 2 labels fade into view; zoom past `1.35x` -> Depth 3+ labels appear cleanly without overlapping or blurring.
-   - Tap a small planet/entry -> confirm light haptic fires, the camera centers smoothly on the body, its child labels appear, and `CosmosInspectorCard` slides cleanly below the zoom controls.
-4. **Cross-Tab Deep Linking & Live Sync:**
-   - On a selected folder card, tap **Open in Explorer** -> confirms Explorer navigates straight into that folder.
-   - On a selected entry card, tap **Open Entry** -> opens `NodeDetailScreen` for that entry; edit its rating or status, return to **Cosmos**, and confirm the node's size/color/card update automatically.
+1. **3D Boot & Black Hole Core:** Launch `npx expo start` in Expo Go and open the **Cosmos** tab (`aperture` icon). Confirm zero white flash, `#04050A` space, parallax stars/nebula, and the central black singularity sliced cleanly through the swirling amber accretion disk.
+2. **3D Rotation, Pinch, Pan & Inertia:**
+   - Drag 1 finger -> smooth 3D yaw/pitch orbital rotation with natural momentum inertia after release.
+   - Pinch 2 fingers -> smooth zoom (`0.45x`–`3.6x`) and 2-finger pan without triggering Android native DOM zoom or jumping when lifting one finger.
+   - Double-tap empty space -> smoothly flies back to the default full-universe view centered on `"Me"`.
+3. **Obsidian Graph Focus & Collision-Free Labels:**
+   - Tap a Galaxy (e.g., `Entertainment`) or Solar System (e.g., `Anime`) -> confirms camera flies smoothly in, unrelated branches dim to ~20%, active parent/child filaments brighten, and `Games` / `Movies & Series` / `Rezero` / `Attack on Titan` labels show zero text collisions.
+   - Tap empty space -> clears focus dimming and closes the bottom inspector card.
+4. **Cross-Tab Sync & Stuck-Zoom Fix:**
+   - Tap an Entry -> tap **Open Entry** -> update its status/rating in Detail -> press Back to return to **Cosmos**. Confirm the camera automatically resets cleanly to full `"Me"` view with the updated node styling applied immediately.
+   - Repeat switching between **Explorer**, **Search**, **Settings**, and **Cosmos** to verify camera always reopens cleanly centered.
