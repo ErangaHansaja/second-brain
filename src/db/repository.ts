@@ -184,6 +184,9 @@ export async function createNode(input: CreateNodeInput): Promise<ParsedNode> {
   if (parent.nodeType !== 'folder') {
     throw new Error('Cannot add children to an entry node; parent must be a folder');
   }
+  if (input.nodeType === 'entry' && parent.depth === 0) {
+    throw new Error('Entries must be placed inside a folder');
+  }
 
   const id = input.id ?? Crypto.randomUUID();
   const depth = parent.depth + 1;
@@ -383,6 +386,9 @@ export async function moveNode(
   if (newParent.nodeType !== 'folder') {
     throw new Error('Target parent must be a folder');
   }
+  if (node.nodeType === 'entry' && newParent.depth === 0) {
+    throw new Error('Entries must be placed inside a folder');
+  }
 
   // Fetch all descendant IDs using recursive CTE to prevent circular move
   const descendantIdList = getDescendantIds(nodeId);
@@ -433,6 +439,9 @@ export async function getMoveTargets(
     depth: number;
   }
 
+  const targetNode = await getNode(nodeId);
+  const excludeRoot = targetNode?.nodeType === 'entry';
+
   const allFolders = expoDb.getAllSync<FolderRow>(
     `SELECT id, parent_id AS parentId, title, depth
      FROM nodes
@@ -463,7 +472,11 @@ export async function getMoveTargets(
   };
 
   return allFolders
-    .filter(folder => !excludedIds.has(folder.id))
+    .filter(folder => {
+      if (excludedIds.has(folder.id)) return false;
+      if (excludeRoot && folder.depth === 0) return false;
+      return true;
+    })
     .map(folder => ({
       id: folder.id,
       title: folder.title,

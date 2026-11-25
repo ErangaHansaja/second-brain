@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleProp,
@@ -30,40 +32,31 @@ export interface AddNodeFABProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const QUICK_ICONS: Array<keyof typeof Ionicons.glyphMap> = [
-  'folder-outline',
-  'book-outline',
-  'code-slash-outline',
-  'rocket-outline',
-  'musical-notes-outline',
-  'film-outline',
-  'sparkles-outline',
-  'hardware-chip-outline',
-  'document-text-outline',
-  'bulb-outline',
-  'fitness-outline',
-  'wallet-outline',
-];
-
 export function AddNodeFAB({
   parentId,
   parentDepth,
   onCreated,
   style,
 }: AddNodeFABProps) {
+  const isRoot = parentDepth === 0;
+  const getDefaultType = (depth: number): NodeType => {
+    if (depth === 0) return 'folder';
+    return depth >= 2 ? 'entry' : 'folder';
+  };
+
   const [modalVisible, setModalVisible] = useState(false);
-  const [nodeType, setNodeType] = useState<NodeType>('folder');
+  const [nodeType, setNodeType] = useState<NodeType>(() =>
+    getDefaultType(parentDepth)
+  );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState<string>('folder-outline');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setNodeType('folder');
-    setSelectedIcon('folder-outline');
+    setNodeType(getDefaultType(parentDepth));
     setError(null);
   };
 
@@ -73,20 +66,16 @@ export function AddNodeFAB({
   };
 
   const handleClose = () => {
+    if (isSubmitting) return;
     resetForm();
     setModalVisible(false);
   };
 
-  const handleNodeTypeChange = (type: NodeType) => {
-    setNodeType(type);
-    if (type === 'folder' && selectedIcon === 'document-text-outline') {
-      setSelectedIcon('folder-outline');
-    } else if (type === 'entry' && selectedIcon === 'folder-outline') {
-      setSelectedIcon('document-text-outline');
-    }
-  };
+  const effectiveNodeType: NodeType = isRoot ? 'folder' : nodeType;
+  const isFolder = effectiveNodeType === 'folder';
 
   const handleCreate = async () => {
+    if (isSubmitting) return;
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setError('Title cannot be empty');
@@ -98,16 +87,25 @@ export function AddNodeFAB({
       setError(null);
 
       const targetDepth = parentDepth + 1;
+      const defaultIcon =
+        effectiveNodeType === 'folder'
+          ? 'folder-outline'
+          : 'document-text-outline';
+
       const newNode = await createNode({
         parentId,
         title: trimmedTitle,
-        nodeType,
-        description: isFolder ? description.trim() || undefined : undefined,
-        icon: selectedIcon,
+        nodeType: effectiveNodeType,
+        description:
+          effectiveNodeType === 'folder'
+            ? description.trim() || undefined
+            : undefined,
+        icon: defaultIcon,
         color: tierColor(targetDepth),
       });
 
-      handleClose();
+      resetForm();
+      setModalVisible(false);
       onCreated(newNode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create item');
@@ -115,8 +113,6 @@ export function AddNodeFAB({
       setIsSubmitting(false);
     }
   };
-
-  const isFolder = nodeType === 'folder';
 
   return (
     <>
@@ -137,65 +133,74 @@ export function AddNodeFAB({
         transparent
         animationType="fade"
         onRequestClose={handleClose}>
-        <Pressable style={styles.modalOverlay} onPress={handleClose}>
-          <Pressable
-            style={styles.modalCard}
-            onPress={(e) => e.stopPropagation()}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={styles.backdrop} onPress={handleClose} />
+
+          <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Create New {isFolder ? 'Folder' : 'Entry'}
+                {isRoot
+                  ? 'New Category'
+                  : isFolder
+                  ? 'Create New Folder'
+                  : 'Create New Entry'}
               </Text>
-              <Pressable hitSlop={8} onPress={handleClose}>
+              <Pressable hitSlop={8} onPress={handleClose} disabled={isSubmitting}>
                 <Ionicons name="close" size={22} color={Colors.text.muted} />
               </Pressable>
             </View>
 
-            {/* Type Selector Segment */}
-            <View style={styles.segmentContainer}>
-              <Pressable
-                style={[
-                  styles.segmentButton,
-                  isFolder && styles.segmentButtonActive,
-                ]}
-                onPress={() => handleNodeTypeChange('folder')}>
-                <Ionicons
-                  name="folder-outline"
-                  size={16}
-                  color={isFolder ? Colors.tier.core : Colors.text.muted}
-                />
-                <Text
+            {/* Type Selector Segment (hidden at root level where only folders are allowed) */}
+            {!isRoot ? (
+              <View style={styles.segmentContainer}>
+                <Pressable
                   style={[
-                    styles.segmentText,
-                    isFolder && styles.segmentTextActive,
-                  ]}>
-                  Folder
-                </Text>
-              </Pressable>
+                    styles.segmentButton,
+                    isFolder && styles.segmentButtonActive,
+                  ]}
+                  onPress={() => setNodeType('folder')}>
+                  <Ionicons
+                    name="folder-outline"
+                    size={16}
+                    color={isFolder ? Colors.tier.core : Colors.text.muted}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      isFolder && styles.segmentTextActive,
+                    ]}>
+                    Folder
+                  </Text>
+                </Pressable>
 
-              <Pressable
-                style={[
-                  styles.segmentButton,
-                  !isFolder && styles.segmentButtonActive,
-                ]}
-                onPress={() => handleNodeTypeChange('entry')}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={16}
-                  color={!isFolder ? Colors.tier.core : Colors.text.muted}
-                />
-                <Text
+                <Pressable
                   style={[
-                    styles.segmentText,
-                    !isFolder && styles.segmentTextActive,
-                  ]}>
-                  Entry
-                </Text>
-              </Pressable>
-            </View>
+                    styles.segmentButton,
+                    !isFolder && styles.segmentButtonActive,
+                  ]}
+                  onPress={() => setNodeType('entry')}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={16}
+                    color={!isFolder ? Colors.tier.core : Colors.text.muted}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      !isFolder && styles.segmentTextActive,
+                    ]}>
+                    Entry
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             {/* Form Fields */}
             <ScrollView
               style={styles.formScroll}
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
               <TextInputField
                 label="Title"
@@ -204,9 +209,14 @@ export function AddNodeFAB({
                   setTitle(t);
                   if (error) setError(null);
                 }}
-                placeholder={isFolder ? 'e.g. Science, Tech, Media' : 'e.g. Interstellar, Paper Notes'}
+                placeholder={
+                  isFolder
+                    ? 'e.g. Science, Tech, Media'
+                    : 'e.g. Interstellar, Paper Notes'
+                }
                 autoFocus
                 error={error}
+                onSubmitEditing={!isFolder ? handleCreate : undefined}
                 style={styles.inputSpacing}
               />
 
@@ -221,29 +231,6 @@ export function AddNodeFAB({
                   style={styles.inputSpacing}
                 />
               ) : null}
-
-              {/* Icon Selector */}
-              <Text style={styles.fieldLabel}>Select Icon</Text>
-              <View style={styles.iconGrid}>
-                {QUICK_ICONS.map((iconName) => {
-                  const isSelected = selectedIcon === iconName;
-                  return (
-                    <Pressable
-                      key={iconName}
-                      style={[
-                        styles.iconOption,
-                        isSelected && styles.iconOptionSelected,
-                      ]}
-                      onPress={() => setSelectedIcon(iconName)}>
-                      <Ionicons
-                        name={iconName}
-                        size={20}
-                        color={isSelected ? Colors.tier.core : Colors.text.secondary}
-                      />
-                    </Pressable>
-                  );
-                })}
-              </View>
             </ScrollView>
 
             {/* Actions */}
@@ -272,8 +259,8 @@ export function AddNodeFAB({
                 )}
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -307,6 +294,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.lg,
   },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
   modalCard: {
     width: '100%',
     maxWidth: 400,
@@ -316,6 +306,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border.subtle,
     padding: Spacing.lg,
+    zIndex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -359,45 +350,17 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
   },
   formScroll: {
-    maxHeight: 320,
+    maxHeight: 240,
   },
   inputSpacing: {
     marginBottom: Spacing.md,
-  },
-  fieldLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
-    color: Colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: Spacing.xs,
-  },
-  iconGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  iconOption: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.border.subtle,
-    backgroundColor: Colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconOptionSelected: {
-    borderColor: Colors.border.active,
-    backgroundColor: 'rgba(245, 166, 35, 0.1)',
   },
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.md,
+    marginTop: Spacing.xs,
     paddingTop: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.border.subtle,

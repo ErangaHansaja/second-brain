@@ -139,7 +139,7 @@ export function MetadataEditor({
           ))}
         </View>
       ) : !editable ? (
-        <Text style={styles.emptyText}>No metadata recorded</Text>
+        <Text style={styles.emptyText}>No details added</Text>
       ) : null}
 
       {editable ? (
@@ -189,7 +189,7 @@ export function MetadataEditor({
                 setFieldName(t);
                 if (error) setError(null);
               }}
-              placeholder="e.g. director, episodes, studio"
+              placeholder="e.g. Season, Episodes, Price, Location"
               autoFocus={!editingKey}
               autoCapitalize="none"
               error={error}
@@ -200,7 +200,7 @@ export function MetadataEditor({
               label="Value"
               value={fieldValue}
               onChangeText={setFieldValue}
-              placeholder="e.g. Christopher Nolan, 25"
+              placeholder="e.g. 3, 24, 1500"
               autoFocus={Boolean(editingKey)}
               onSubmitEditing={handleSaveField}
               style={styles.modalInput}
