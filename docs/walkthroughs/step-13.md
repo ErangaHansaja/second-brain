@@ -1,37 +1,31 @@
-# Walkthrough — Step 13: Interactive 3D Obsidian Cosmos View
+# Walkthrough — Step 13: Interactive WebGL 1.0 Obsidian Cosmos View
 
 > **Branch:** `feat/step-13-cosmos-view`  
 > **Base:** `dev` (at `e4ba5b4` — Phase 1 / Step 12 merged)  
-> **Status:** Completed & Typechecked (PR #13 Updated with 3D WebView Engine)  
+> **Status:** Completed & Typechecked (PR #13 Updated with 60 FPS WebGL 1.0 Engine)  
 
 ---
 
 ## 1. Overview & Architecture
 
-Step 13 delivers **Phase 2: The Obsidian Cosmos View**, replacing the initial flat 2D SVG map with a **100% offline, hardware-accelerated 3D Canvas Galaxy & Black Hole engine** inside `react-native-webview`, paired with native Obsidian HUD overlays and Inspector Card:
+Step 13 delivers **Phase 2: The Obsidian Cosmos View**, powered by a **100% original, zero-dependency, offline WebGL 1.0 GPU shader star-system engine** hosted in `react-native-webview` with native Obsidian HUD overlays and Inspector Card:
 
-1. **Offline 3D Black Hole & Galaxy Engine (`src/screens/cosmos/cosmosEngineHtml.ts`):**
-   - **Zero-CDN High-DPI 3D Canvas:** Runs an internal `requestAnimationFrame` loop scaled by `Math.min(window.devicePixelRatio, 3)` inside `#04050A` void space with perspective projection, 3D yaw/pitch/zoom/pan camera interpolation, and back-to-front Z-sorting.
-   - **3D Starfield & Parallax Nebula:** Renders 290+ twinkling 3D sphere stars plus 4 deep-indigo, stellar-sky, and amber nebula clouds with cached radial glow textures (`globalCompositeOperation = 'lighter'`).
-   - **Living `"Me"` Black Hole Core:** Central pitch-black singularity sphere occluded cleanly against 340+ Keplerian amber/gold/white-hot accretion disk particles (inner particles orbit faster; back-half renders behind the event horizon, front-half crosses in front).
-   - **Tilted 3D Orbital Systems:**
-     - Galaxies (depth 1) drift gently on wide inclined 3D orbital planes (`r = 215–254`).
-     - Solar Systems (depth 2) fan along wide outward tilted local arcs (`r = 88–108`); Entries/Planets (depth 3+) nest cleanly (`r = 48–66`) with guaranteed angular spacing so sibling labels and bodies don't crowd.
-     - Tapered parent-child energy filaments connect the hierarchy; entry colors map directly from `STATUS_PRESETS`, with glow/radius scaled by rating (`1–10`) and folder `descendantCount`.
-   - **Obsidian Graph Focus & Collision-Free Labels:**
-     - Tapping a body flies the 3D camera smoothly onto it, dims unrelated branches smoothly to ~20% opacity while highlighting the selected node's ancestor path and direct children, and posts `{ type: 'SELECT_NODE', nodeId }` to React Native.
-     - Priority-sorted 2D bounding-box collision detection checks both placed labels and higher-priority node circles so labels never overlap each other or sit directly over another body.
-   - **Mobile Multi-Touch & Bidirectional Bridge:**
-     - Handles 1-finger 3D trackball rotation with inertia, 2-finger pinch-zoom (`0.45x`–`3.6x`) + screen pan, single-tap node selection, void tap clear, and double-tap reset (`touch-action: none`).
-     - Listens on both `window` and `document` for `SET_DATA`, `ZOOM_IN`, `ZOOM_OUT`, `RESET_CAMERA`, and `CLEAR_SELECTION` after posting `READY`.
-2. **Whole-Universe Data & Shared Payload Prep (`repository.ts`, `useAllNodes.ts`, `cosmosLayout.ts`):**
-   - `getAllNodes()` loads all nodes sorted `depth ASC, title COLLATE NOCASE ASC`.
-   - `useAllNodes()` wraps `getAllNodes()` safely with a cancellation flag and `refresh()`.
-   - `buildCosmosGraphData()` in `src/utils/cosmosLayout.ts` computes O(N) descendant counts and status/tier colors shared across the WebView payload and `CosmosInspectorCard`.
-3. **Native Overlays & Focus Camera Auto-Reset (`CosmosScreen.tsx`, `CosmosInspectorCard.tsx`):**
-   - Mounts `<WebView>` with `originWhitelist={['*']}`, `scrollEnabled={false}`, `bounces={false}`, `overScrollMode="never"`, `androidLayerType="hardware"`, `setBuiltInZoomControls={false}`, `setDisplayZoomControls={false}`, and `#04050A` `style` / `containerStyle` for zero white flashes.
-   - On `useFocusEffect` tab return, refreshes `useAllNodes()`, clears `selectedNodeId`, and posts `RESET_CAMERA` so returning from Detail/Explorer/Search/Settings always reopens centered cleanly on `"Me"`.
-   - Keeps native Obsidian top HUD (`Cosmos` + live body counter), `+` / `-` / Recenter circular controls, and bottom `CosmosInspectorCard` (`Open Entry` / `Open in Explorer`).
+1. **Pure WebGL 1.0 GPU Engine (`src/screens/cosmos/cosmosEngineHtml.ts`):**
+   - **Zero 2D Canvas Bottlenecks:** Eliminates all `createRadialGradient`, `shadowBlur`, and per-frame full-screen 2D redraws; caps resolution cleanly at `Math.min(window.devicePixelRatio || 1, 2)` and clears `#04050A` (`gl.clearColor(0.016, 0.020, 0.039, 1.0)`).
+   - **Minimalist Monochrome & Sand-Obsidian Palette:** Refined accents (`#EAE6DF` warm off-white, `#E6B36A` sand/amber, `#68B5E8` muted sky, `#52C7B0` soft mint, `#D9687A` muted rose, `#959CEB` soft violet).
+   - **4 Batched GPU Draw Calls:**
+     1. **Deep 3D Starfield (`gl.POINTS`):** 380 deterministic stars distributed across a distant spherical shell (`r = 900–1500`) rotated by camera orientation only.
+     2. **Central `"Me"` Fibonacci Dotted 3D Globe (`gl.POINTS`):** ~650 Fibonacci-sphere points (`radius = 44`) rotating smoothly at `~0.12 rad/s`, with a vertex shader view-space normal/depth gradient (`vAlpha` ~`0.95` crisp front dots fading smoothly to `0.14` on back hemisphere dots).
+     3. **Concentric Tilted 3D Orbit Tracks & Filaments (`gl.LINES`):** Each Depth 1 Galaxy gets its own 96-segment concentric tilted astrolabe ring (`r = 92 + galaxyIndex * 42`, `±0.26 rad` inclination), brightening from `0.16` to `0.55` when its branch is focused, alongside subtle parent-child hierarchy filaments (`0.14` -> `0.50` on focus).
+     4. **Procedural Ray-Sphere Lit 3D Planets (`gl.POINTS`):** Painter's-sorted spheres shaded per-fragment via `gl_PointCoord` sphere normals, directional light toward `"Me"`, specular highlight, Fresnel limb glow, and soft atmospheric halo; scaled subtly by `rating` (`1–10`) and folder `descendantCount`, with unfocused branches smoothly dimmed to `0.22`.
+   - **Pooled GPU-Composited HTML Labels:** Fixed pool of `translate3d` `<div>` nodes with priority-sorted bounding-box collision culling (selected -> branch neighbors -> core -> galaxies -> closer Z), revealing Solar System and Entry labels smoothly on zoom-in or branch focus.
+   - **Instant Touch Controls & MVP-Matched Picking:** 1-finger spherical orbit + inertia, 2-finger pinch zoom (`MIN_DIST` to `MAX_DIST`), double-tap reset, and exact MVP-projected `36px` tap picking (`SELECT_NODE` / `CLEAR_SELECTION`).
+2. **Whole-Universe Data & Shared Payload (`repository.ts`, `useAllNodes.ts`, `cosmosLayout.ts`):**
+   - `getAllNodes()` loads all nodes ordered by `depth ASC, title COLLATE NOCASE ASC`; `useAllNodes()` wraps it with a `cancelled` guard.
+   - `buildCosmosGraphData()` computes O(N) descendant counts and node colors shared between the WebGL payload and `CosmosInspectorCard`.
+3. **Tab Blur GPU Pause & Focus Camera Auto-Reset (`CosmosScreen.tsx`):**
+   - Mounts `<WebView>` with `androidLayerType="hardware"`, `javaScriptEnabled`, `domStorageEnabled`, `scrollEnabled={false}`, `bounces={false}`, `overScrollMode="never"`, `setBuiltInZoomControls={false}`, and `#04050A` styling.
+   - Inside `useFocusEffect`, refreshes nodes, clears selection, resumes the WebGL loop (`SET_ACTIVE: true`), and resets camera (`RESET_CAMERA`) on focus; returns a blur cleanup sending `SET_ACTIVE: false` so `requestAnimationFrame` stops completely while on Explorer, Search, or Settings.
 
 ---
 
@@ -39,20 +33,20 @@ Step 13 delivers **Phase 2: The Obsidian Cosmos View**, replacing the initial fl
 
 ### Files Created
 - `src/hooks/useAllNodes.ts` — Race-safe whole-universe loader hook.
-- `src/utils/cosmosLayout.ts` — O(N) descendant mass calculation, status/tier color resolution, and 3D payload builder.
+- `src/utils/cosmosLayout.ts` — O(N) descendant counts, color resolution, and payload builder.
 - `src/app/(tabs)/cosmos.tsx` — Thin Expo Router wrapper for the `Cosmos` tab.
-- `src/screens/cosmos/cosmosEngineHtml.ts` — Self-contained offline 3D Canvas Black Hole & Galaxy WebView HTML engine.
-- `src/screens/cosmos/CosmosScreen.tsx` — 3D WebView host, bridge, HUD controls, and focus auto-reset.
+- `src/screens/cosmos/cosmosEngineHtml.ts` — Offline WebGL 1.0 star-system shader engine.
+- `src/screens/cosmos/CosmosScreen.tsx` — Hardware-accelerated WebView host, HUD controls, and focus/blur lifecycle.
 - `src/screens/cosmos/CosmosInspectorCard.tsx` — Floating inspector summary card with deep navigation actions.
 - `docs/walkthroughs/step-13.md` — This walkthrough report.
 
 ### Files Modified
-- `package.json` & `package-lock.json` — Installed `react-native-svg` (`15.16.0`) and `react-native-webview` (`14.0.1`).
+- `package.json` & `package-lock.json` — Added `react-native-svg` (`15.16.0`) and `react-native-webview` (`14.0.1`).
 - `src/app/_layout.tsx` — Wrapped app root in `<GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.bg.void }}>`.
 - `src/app/(tabs)/_layout.tsx` — Added the 4th `Cosmos` tab (`aperture` / `aperture-outline`) next to `Explorer`.
 - `src/db/repository.ts` — Exported `getAllNodes()`.
 - `src/hooks/index.ts` — Exported `useAllNodes`.
-- `PROJECT_STATE.md` — Marked Step 12 merged and Step 13 complete with 3D WebView engine architecture.
+- `PROJECT_STATE.md` — Documented WebGL 1.0 Cosmos engine, `react-native-webview`, and blur/focus lifecycle.
 
 ---
 
@@ -62,13 +56,16 @@ Step 13 delivers **Phase 2: The Obsidian Cosmos View**, replacing the initial fl
 |:---|:---|:---|
 | `29345b5` | `chore(deps): configure svg, reanimated, and gesture-handler root for Cosmos view` | `react-native-svg` & `GestureHandlerRootView` root |
 | `c2558d8` | `feat(data): add getAllNodes repository query and reactive useAllNodes hook` | `getAllNodes()` & `useAllNodes` hook |
-| `2b920b3` | `feat(cosmos): add deterministic orbital layout engine and world-space hit-testing` | Initial layout helpers |
+| `2b920b3` | `feat(cosmos): add deterministic orbital layout engine and world-space hit-testing` | Initial layout utilities |
 | `b834da2` | `feat(screen): implement interactive pinch-to-zoom Cosmos galaxy screen and tab` | Initial `cosmos` tab & inspector card |
 | `d2f8832` | `docs: update PROJECT_STATE.md and add step-13 walkthrough` | Initial Step 13 docs |
 | `eaf41ef` | `chore(deps): add react-native-webview for GPU-accelerated 3D Cosmos engine` | `react-native-webview` (`14.0.1`) |
-| `1f2f9e7` | `feat(cosmos): build offline GPU-accelerated 3D Black Hole and Galaxy canvas engine` | `src/screens/cosmos/cosmosEngineHtml.ts` |
-| `c0f2463` | `feat(screen): connect CosmosScreen to 3D WebView engine with focus camera auto-reset` | WebView wiring, cleaned `cosmosLayout.ts`, focus reset |
-| *(pending)* | `docs: update PROJECT_STATE and step-13 walkthrough for 3D Cosmos engine` | Updated Step 13 docs |
+| `1f2f9e7` | `feat(cosmos): build offline GPU-accelerated 3D Black Hole and Galaxy canvas engine` | Initial 2D Canvas engine |
+| `c0f2463` | `feat(screen): connect CosmosScreen to 3D WebView engine with focus camera auto-reset` | WebView wiring & cleanup |
+| `85867d8` | `docs: update PROJECT_STATE and step-13 walkthrough for 3D Cosmos engine` | Updated 3D docs |
+| `61d954e` | `perf(cosmos): replace 2D canvas with 60fps WebGL 1.0 dotted-globe and 3D planet shader engine` | WebGL 1.0 shaders, Fibonacci globe & pooled labels |
+| `564405a` | `feat(cosmos): pause WebGL loop on tab blur and auto-reset camera on focus` | `SET_ACTIVE` blur pause & focus camera reset |
+| *(pending)* | `docs: update PROJECT_STATE and step-13 walkthrough for WebGL Cosmos engine` | Final WebGL docs & QA checklist |
 
 ---
 
@@ -81,14 +78,13 @@ npx tsc --noEmit
 *Result:* Passed with **0 errors**.
 
 ### Manual Expo Go QA Steps
-1. **3D Boot & Black Hole Core:** Launch `npx expo start` in Expo Go and open the **Cosmos** tab (`aperture` icon). Confirm zero white flash, `#04050A` space, parallax stars/nebula, and the central black singularity sliced cleanly through the swirling amber accretion disk.
-2. **3D Rotation, Pinch, Pan & Inertia:**
-   - Drag 1 finger -> smooth 3D yaw/pitch orbital rotation with natural momentum inertia after release.
-   - Pinch 2 fingers -> smooth zoom (`0.45x`–`3.6x`) and 2-finger pan without triggering Android native DOM zoom or jumping when lifting one finger.
-   - Double-tap empty space -> smoothly flies back to the default full-universe view centered on `"Me"`.
-3. **Obsidian Graph Focus & Collision-Free Labels:**
-   - Tap a Galaxy (e.g., `Entertainment`) or Solar System (e.g., `Anime`) -> confirms camera flies smoothly in, unrelated branches dim to ~20%, active parent/child filaments brighten, and `Games` / `Movies & Series` / `Rezero` / `Attack on Titan` labels show zero text collisions.
-   - Tap empty space -> clears focus dimming and closes the bottom inspector card.
-4. **Cross-Tab Sync & Stuck-Zoom Fix:**
-   - Tap an Entry -> tap **Open Entry** -> update its status/rating in Detail -> press Back to return to **Cosmos**. Confirm the camera automatically resets cleanly to full `"Me"` view with the updated node styling applied immediately.
-   - Repeat switching between **Explorer**, **Search**, **Settings**, and **Cosmos** to verify camera always reopens cleanly centered.
+1. **60 FPS Boot & Dotted Globe:** Open the **Cosmos** tab in Expo Go. Confirm smooth 60 FPS animation, `#04050A` deep space, rotating ~650-dot Fibonacci `"Me"` globe with crisp front dots & faded back hemisphere, tilted concentric orbital tracks, and 3D shader-lit spheres.
+2. **Touch Responsiveness & Camera Orbit:**
+   - Drag 1 finger -> instant 3D spherical rotation with smooth inertia damping.
+   - Pinch 2 fingers -> smooth zoom in/out (`MIN_DIST`–`MAX_DIST`).
+   - Double-tap anywhere -> smoothly resets back to the full concentric astrolabe view.
+3. **Instant Tap Picking, Focus Dimming & Collision-Free Labels:**
+   - Tap any Galaxy (`Entertainment`, `Food`, etc.) or planet -> instant `36px` selection, smooth fly-in, unrelated branches dim to `~0.22`, active orbit track & filaments brighten, labels appear cleanly without overlap, and `CosmosInspectorCard` opens cleanly at bottom.
+   - Tap empty space -> immediately clears selection and closes the inspector card.
+4. **Tab Blur Pause & Focus Auto-Reset:**
+   - Zoom into an Entry, tap **Open Entry** -> edit in Detail -> press Back, OR switch to **Explorer** / **Search** / **Settings** and return to **Cosmos**. Confirm Explorer/Search/Settings run smoothly without background WebGL lag (`SET_ACTIVE: false`), and returning to **Cosmos** cleanly resets the camera to full centered view (`RESET_CAMERA`) with refreshed data.

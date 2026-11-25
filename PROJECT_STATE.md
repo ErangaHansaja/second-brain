@@ -134,9 +134,9 @@ second-brain/
     │
     ├── screens/                           # Real feature screen implementations
     │   ├── cosmos/
-    │   │   ├── cosmosEngineHtml.ts        # Offline 3D Canvas Black Hole & Galaxy WebView HTML generator
+    │   │   ├── cosmosEngineHtml.ts        # Offline 60fps WebGL 1.0 dotted-globe & 3D shader engine
     │   │   ├── CosmosInspectorCard.tsx    # Floating inspector card for tapped Cosmos bodies
-    │   │   └── CosmosScreen.tsx           # 3D WebView Cosmos wrapper, native HUD & focus auto-reset
+    │   │   └── CosmosScreen.tsx           # WebGL WebView host, blur GPU pause & focus auto-reset
     │   ├── explorer/
     │   │   ├── ExplorerNodeItem.tsx       # Wrapper calling useDescendantCount per folder card
     │   │   ├── ExplorerScreen.tsx         # Full drill-down Explorer with CRUD modals & auto-open new entries
@@ -228,15 +228,15 @@ second-brain/
    - **Safe Tactile Haptics (`src/utils/haptics.ts`):** `hapticLight()`, `hapticMedium()`, `hapticSuccess()`, and `hapticWarning()` guard against `Platform.OS === 'web'` and catch rejected promises/unavailable hardware quietly across rating dots, Search filter pills, view mode toggles, long-press actions, node creation, saves, backups, and destructive confirmations.
    - **Settled Node Lookup & Post-Restore Recovery (`useNode` + `ExplorerScreen`):** `useNode` tracks `settledId` so transitioning node IDs report `loading: true` without 1-frame stale null races, enabling `ExplorerScreen` to recover back to `rootNode.id` automatically whenever `!rootLoading && !nodeLoading && currentNode === null`.
    - **Dark Boot & Production Cleanup (`app.json`, `_layout.tsx`, `SettingsScreen.tsx`):** `app.json` locks `userInterfaceStyle: "dark"` with `#04050A` root/splash/adaptiveIcon background colors, root `_layout.tsx` wraps `<Stack>` in an Obsidian `DarkTheme` (`ThemeProvider`) + `#04050A` view + `<StatusBar style="light" />`, `(tabs)/_layout.tsx` sets `sceneStyle: { backgroundColor: '#04050A' }`, temporary dev scaffolding (`src/app/dev-gallery.tsx`, `src/screens/dev/ComponentGalleryScreen.tsx`, `src/db/selfTest.ts`) and Settings' Developer Tools section were removed, and Settings now renders a subtle `Second Brain · v1.0.0` footer.
-9. **Phase 2 Interactive 3D Obsidian Cosmos View (Step 13 Delivered):**
+9. **Phase 2 Interactive 3D WebGL Obsidian Cosmos View (Step 13 Delivered):**
    - **Gesture Root & Whole-Universe Query (`_layout.tsx`, `getAllNodes`, `useAllNodes`, `cosmosLayout.ts`):** Wrapped the app root in `<GestureHandlerRootView>` with `#04050A` background, added `getAllNodes()` ordered by `depth ASC, title COLLATE NOCASE ASC`, added race-safe `useAllNodes()`, and shared O(N) descendant mass + status-color payload formatting via `buildCosmosGraphData()`.
-   - **Offline 3D Canvas Black Hole & Tilted Galaxies (`src/screens/cosmos/cosmosEngineHtml.ts`):** Self-contained, zero-CDN HTML5 Canvas 3D engine scaled by `devicePixelRatio` featuring 290+ twinkling 3D parallax stars, 4 subtle parallax nebula clouds, a `"Me"` central singularity occluded against 340+ Keplerian accretion-disk particles (`globalCompositeOperation = 'lighter'`), generously spaced tilted 3D galaxy/system/planet orbits with gentle drift (pausing during drags/selection), and luminous parent-child energy filaments.
-   - **Camera Gestures, Constellation Dimming, Collision-Free Labels & Focus Auto-Reset (`CosmosScreen.tsx` + `CosmosInspectorCard.tsx`):** Supports 1-finger 3D orbital rotation with inertia, 2-finger pinch-zoom (`0.45x`–`3.6x`) + pan, tap fly-in focusing that dims unrelated branches to ~20% while keeping parent/child constellation paths crisp, priority-sorted collision-free 2D labels, double-tap reset, bidirectional `READY` / `SET_DATA` / `RESET_CAMERA` bridge, automatic camera/selection reset on `useFocusEffect` tab return, and native obsidian HUD + `CosmosInspectorCard`.
+   - **Offline 60 FPS WebGL 1.0 Shader Engine (`src/screens/cosmos/cosmosEngineHtml.ts`):** Zero-dependency WebGL 1.0 scene (`dpr <= 2`, zero 2D canvas redraws/gradients/shadows) in 4 batched GPU draw calls: (1) 380-star deep spherical starfield (`gl.POINTS`), (2) rotating ~650-dot Fibonacci 3D central `"Me"` globe (`radius = 44`) with view-depth front/back fade, (3) 96-segment tilted concentric astrolabe orbital tracks (`r = 92 + idx * 42`, `±0.28 rad` inclination) + hierarchy filaments (`gl.LINES`), and (4) back-to-front sorted procedural ray-sphere lit 3D planets (`gl.POINTS`) shaded toward `"Me"` with Fresnel rim highlights in a muted monochrome & sand-obsidian palette.
+   - **Pooled HTML Labels, Tap Picking & Blur Pause (`CosmosScreen.tsx` + `CosmosInspectorCard.tsx`):** Positions a fixed pool of `translate3d` HTML `<div>` labels with screen-space collision avoidance, supports 1-finger spherical orbit + inertia, 2-finger pinch-zoom, double-tap reset, `36px` MVP-matched tap fly-in with unrelated branch dimming (`0.22`), pauses `requestAnimationFrame` on tab blur (`SET_ACTIVE: false`), and auto-resets camera + clears selection on tab focus (`RESET_CAMERA`).
 
 ---
 
 ## 5. Next Immediate Step
 
 **Verify & Merge Step 13 (`feat/step-13-cosmos-view`)**:
-- Test the 3D WebView Cosmos view, black hole accretion animation, focus dimming, collision-free labels, and focus camera reset in Expo Go using [docs/walkthroughs/step-13.md](docs/walkthroughs/step-13.md).
+- Test the 60 FPS WebGL Cosmos view, Fibonacci dotted `"Me"` globe, concentric astrolabe orbits, ray-sphere shaded planets, and tab blur pause/reset in Expo Go using [docs/walkthroughs/step-13.md](docs/walkthroughs/step-13.md).
 - Merge PR #13 into `dev` on GitHub once manual QA passes.
