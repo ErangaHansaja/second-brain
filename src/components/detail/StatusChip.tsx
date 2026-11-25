@@ -38,7 +38,7 @@ export function StatusChip({
     status && status in STATUS_PRESETS
       ? STATUS_PRESETS[status as keyof typeof STATUS_PRESETS]
       : {
-          value: status ?? 'neutral',
+          value: status ?? 'planned',
           label: status ? String(status) : 'No Status',
           icon: 'ellipse-outline',
           color: Colors.text.muted,

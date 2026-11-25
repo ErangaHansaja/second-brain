@@ -6,12 +6,10 @@ export type { Node, NewNode } from '../db/schema';
 export type NodeType = 'folder' | 'entry';
 
 export type NodeStatus =
-  | 'completed'
-  | 'in_progress'
   | 'planned'
-  | 'liked'
-  | 'disliked'
-  | 'neutral'
+  | 'in_progress'
+  | 'completed'
+  | 'dropped'
   | (string & {});
 
 // ── Cosmic tier mapping (used by TierBadge, tokens & Phase 2 renderer)
